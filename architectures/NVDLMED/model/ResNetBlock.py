@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from architectures.NVDLMED.model.GroupNorm import *
 
 
 class ResNetBlock(nn.Module):
@@ -12,10 +13,10 @@ class ResNetBlock(nn.Module):
         self.skip_connection = nn.Conv3d(in_channels=in_channel, out_channels=out_channel, kernel_size=(1, 1, 1), stride=1)
 
         self.layers = nn.Sequential(
-            GroupNorm(groups=8),
+            GroupNorm(in_channel, num_groups=8),
             nn.ReLU(),
             nn.Conv3d(in_channels=in_channel, out_channels=out_channel, kernel_size=(3, 3, 3), stride=1),
-            GroupNorm(groups=8),
+            GroupNorm(in_channel, num_groups=8),
             nn.ReLU(),
             nn.Conv3d(in_channels=in_channel, out_channels=out_channel, kernel_size=(3, 3, 3), stride=1)
         )
@@ -25,3 +26,4 @@ class ResNetBlock(nn.Module):
         direct_out = self.layers(x)
 
         out = skip_connection_out + direct_out
+
