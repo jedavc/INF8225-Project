@@ -3,31 +3,43 @@ from architectures.NVDLMED.model.ResNetBlock import *
 
 
 class DecoderGT(nn.Module):
-    def __init__(self, output_channels=3):
+    def __init__(self, input_channels=256, output_channels=3):
         super(DecoderGT, self).__init__()
+        self.input_channels = input_channels
         self.output_channels = output_channels
 
-        self.upsample3d = nn.Upsample(scale_factor=2, mode='bilinear')
+        self.first_upsample3d = nn.Sequential(nn.Conv3d(in_channels=input_channels, out_channels=128, kernel_size=(1, 1, 1), stride=1),
+                                              nn.Upsample(scale_factor=2, mode='bilinear'))
+
+        self.first_resnetblock = ResNetBlock(in_channel=128, out_channel=128)
+
+        self.second_upsample3d = nn.Sequential(nn.Conv3d(in_channels=128, out_channels=64, kernel_size=(1, 1, 1), stride=1),
+                                               nn.Upsample(scale_factor=2, mode='bilinear'))
+
+        self.second_resnetblock = ResNetBlock(in_channel=64, out_channel=64)
+
+        self.third_upsample3d = nn.Sequential(nn.Conv3d(in_channels=64, out_channels=32, kernel_size=(1, 1, 1), stride=1),
+                                              nn.Upsample(scale_factor=2, mode='bilinear'))
+
+        self.third_resnetblock = ResNetBlock(in_channel=32, out_channel=32)
+
+        self.blue_decoder = nn.Conv3d(in_channels=x.shape[1], out_channels=32, kernel_size=(3, 3, 3), stride=1)
 
     def forward(self, x1, x2, x3, x4):
-
         # First Decoder ResNetBlock (output filters = 128)
-        x = nn.Conv3d(in_channels=x4.shape[1], out_channels=128, kernel_size=(1, 1, 1), stride=1)(x4)
-        x = self.upsample3d(x)
+        x = self.first_upsample3d(x4)
         x = torch.add(x, x3)
-        x = ResNetBlock(in_channel=128, out_channel=128)(x)
+        x = self.first_resnetblock(x)
 
         # Second Decoder ResNetBlock (output filters = 64)
-        x = nn.Conv3d(in_channels=x.shape[1], out_channels=64, kernel_size=(1, 1, 1), stride=1)(x)
-        x = self.upsample3d(x)
+        x = self.second_upsample3d(x)
         x = torch.add(x, x2)
-        x = ResNetBlock(in_channel=64, out_channel=64)(x)
+        x = self.second_resnetblock(x)
 
         # Third Decoder ResNetBlock (output filters = 32)
-        x = nn.Conv3d(in_channels=x.shape[1], out_channels=32, kernel_size=(1, 1, 1), stride=1)(x)
-        x = self.upsample3d(x)
+        x = self.third_upsample3d(x)
         x = torch.add(x, x1)
-        x = ResNetBlock(in_channel=32, out_channel=32)(x)
+        x = self.third_resnetblock(x)
 
         # Blue Decoder (output filters = 32)
         x = nn.Conv3d(in_channels=x.shape[1], out_channels=32, kernel_size=(3, 3, 3), stride=1)(x)
