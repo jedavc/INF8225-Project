@@ -20,7 +20,7 @@ class VAE(nn.Module):
         x = SamplingBlock(input_shape=256, output_shape=128)(x)
 
         # VU BLock
-        
+
 
 
 class SamplingBlock(nn.Module):
