@@ -3,7 +3,7 @@ from architectures.NVDLMED.model.ResNetBlock import *
 
 
 class DecoderGT(nn.Module):
-    def __init__(self, output_channels=3):
+    def __init__(self, output_channels=4):
         super(DecoderGT, self).__init__()
         self.output_channels = output_channels
 
@@ -33,6 +33,6 @@ class DecoderGT(nn.Module):
         x = nn.Conv3d(in_channels=x.shape[1], out_channels=32, kernel_size=(3, 3, 3), stride=1)(x)
 
         # Output Block
-        out_GT = nn.Conv3d(in_channels=x.shape[1], out_channels=self.output_channels, kernel_size=(3, 3, 3), stride=1)(x)
+        out_GT = nn.Conv3d(in_channels=x.shape[1], out_channels=self.output_channels, kernel_size=(1, 1, 1), stride=1)(x)
 
         return out_GT
