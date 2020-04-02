@@ -6,6 +6,7 @@ from torch.distributions.normal import Normal
 class VAE(nn.Module):
     def __init__(self, input_shape=(4, 160, 192, 128), output_channels=3):
         super(VAE, self).__init__()
+        self.input_shape = input_shape
         self.output_channels = output_channels
 
         self.activation = nn.ReLU()

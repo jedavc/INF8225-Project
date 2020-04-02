@@ -12,7 +12,7 @@ class ResNetBlock(nn.Module):
 
         self.skip_connection = nn.Conv3d(in_channels=in_channel, out_channels=out_channel, kernel_size=(1, 1, 1), stride=1)
 
-        self.layers = nn.Sequential(
+        self.direct_connection = nn.Sequential(
             GroupNorm(in_channel, num_groups=8),
             nn.ReLU(),
             nn.Conv3d(in_channels=in_channel, out_channels=out_channel, kernel_size=(3, 3, 3), stride=1),
@@ -22,8 +22,10 @@ class ResNetBlock(nn.Module):
         )
 
     def forward(self, x):
-        skip_connection_out = self.skip_connection(x)
+        skip_connection_out = self.direct_connection(x)
         direct_out = self.layers(x)
 
         out = skip_connection_out + direct_out
+
+        return out
 
