@@ -25,7 +25,7 @@ class BrainTumorDataset(Dataset):
 
         self.desired_resolution = desired_resolution
         self.original_resolution = original_resolution
-        self.output_channels=output_channels
+        self.output_channels = output_channels
         self.transform_input = transform_input
         self.transform_gt = transform_gt
         self.files = self.find_files()
@@ -47,7 +47,11 @@ class BrainTumorDataset(Dataset):
         data_files = self.files[idx]
         numpy_data = np.array([sitk.GetArrayFromImage(sitk.ReadImage(file))
                                for file in data_files.values()], dtype=np.float32)
-        input = self.transform_input(numpy_data[0:4])
+
+        input = numpy_data[0:4]
+        if self.transform_input is not None:
+            input = self.transform_input(numpy_data[0:4])
+
         gt = self.transform_gt(numpy_data[-1])
 
         return torch.from_numpy(input), torch.from_numpy(gt)
@@ -89,3 +93,27 @@ class Labelize(object):
 
         return np.array([ncr, ed, et], dtype=np.uint8)
 
+class CropCenter3D(object):
+    def __init__(self, cropx, cropy, cropz):
+        self.cropx = cropx
+        self.cropy = cropy
+        self.cropz = cropz
+        self.startx = 0
+        self.starty = 0
+        self.startz = 0
+
+    def set_new_dimensions(self, data):
+        x, y, z = data.shape
+        self.startx = x // 2 - (self.cropx // 2)
+        self.starty = y // 2 - (self.cropy // 2)
+        self.startz = z // 2 - (self.cropz // 2)
+        return data[self.startx:self.startx + self.cropx, self.starty:self.starty + self.cropy, self.startz:self.startz + self.cropz]
+
+    def __call__(self, data):
+        start = 0
+        if data.shape[0] > 1:
+            start = 1
+        cropped_data = np.array([self.set_new_dimensions(data[i])
+                                 for i in range(start, data.shape[0])], dtype=np.float32)
+        print(cropped_data[1].shape)
+        return cropped_data
