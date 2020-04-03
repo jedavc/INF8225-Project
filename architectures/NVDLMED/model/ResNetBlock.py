@@ -10,20 +10,20 @@ class ResNetBlock(nn.Module):
         self.in_channel = in_channel
         self.out_channel = out_channel
 
-        self.skip_connection = nn.Conv3d(in_channels=in_channel, out_channels=out_channel, kernel_size=(1, 1, 1), stride=1)
+        self.skip_connection = nn.Conv3d(in_channels=in_channel, out_channels=out_channel, kernel_size=1, stride=1)
 
         self.direct_connection = nn.Sequential(
-            GroupNorm(in_channel, num_groups=8),
+            nn.GroupNorm(8, in_channel),
             nn.ReLU(),
-            nn.Conv3d(in_channels=in_channel, out_channels=out_channel, kernel_size=(3, 3, 3), stride=1),
-            GroupNorm(in_channel, num_groups=8),
+            nn.Conv3d(in_channels=in_channel, out_channels=out_channel, kernel_size=(3, 3, 3), stride=1, padding=1),
+            nn.GroupNorm(8, out_channel),
             nn.ReLU(),
-            nn.Conv3d(in_channels=in_channel, out_channels=out_channel, kernel_size=(3, 3, 3), stride=1)
+            nn.Conv3d(in_channels=out_channel, out_channels=out_channel, kernel_size=(3, 3, 3), stride=1, padding=1)
         )
 
     def forward(self, x):
-        skip_connection_out = self.direct_connection(x)
-        direct_out = self.layers(x)
+        skip_connection_out = self.skip_connection(x)
+        direct_out = self.direct_connection(x)
 
         out = skip_connection_out + direct_out
 

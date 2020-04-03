@@ -11,7 +11,7 @@ class GroupNorm(nn.Module):
         self.eps = eps
 
     def forward(self, x):
-        N,C,H,W = x.size()
+        batch,N,C,H,W = x.size()
         G = self.num_groups
         assert C % G == 0
 

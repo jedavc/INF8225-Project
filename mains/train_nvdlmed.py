@@ -25,5 +25,6 @@ if __name__ == "__main__":
         output_gt, output_vae = model(input)
         optimizer.zero_grad()
         loss = loss_gt(target, output_gt)
+        print(loss.item())
         loss.backward()
         optimizer.step()

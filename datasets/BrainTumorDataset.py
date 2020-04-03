@@ -25,7 +25,7 @@ class BrainTumorDataset(Dataset):
 
         self.desired_resolution = desired_resolution
         self.original_resolution = original_resolution
-        self.output_channels=output_channels
+        self.output_channels = output_channels
         self.transform_input = transform_input
         self.transform_gt = transform_gt
         self.files = self.find_files()
@@ -41,7 +41,7 @@ class BrainTumorDataset(Dataset):
         return data_paths
 
     def __len__(self):
-        return len(self.data) - 1
+        return len(self.files)
 
     def __getitem__(self, idx):
         data_files = self.files[idx]
@@ -89,3 +89,4 @@ class Labelize(object):
 
         return np.array([ncr, ed, et], dtype=np.uint8)
 
+print(len(BrainTumorDataset()))
