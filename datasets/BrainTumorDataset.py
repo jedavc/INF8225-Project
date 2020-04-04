@@ -4,6 +4,7 @@ import re
 from torch.utils.data import Dataset
 from scipy.ndimage import zoom
 import glob
+import random
 import numpy as np
 
 
@@ -93,7 +94,7 @@ class Labelize(object):
 
         return np.array([ncr, ed, et], dtype=np.uint8)
 
-class CropCenter3D(object):
+class CropCenter3DInput(object):
     def __init__(self, cropx, cropy, cropz):
         self.cropx = cropx
         self.cropy = cropy
@@ -110,10 +111,77 @@ class CropCenter3D(object):
         return data[self.startx:self.startx + self.cropx, self.starty:self.starty + self.cropy, self.startz:self.startz + self.cropz]
 
     def __call__(self, data):
-        start = 0
-        if data.shape[0] > 1:
-            start = 1
         cropped_data = np.array([self.set_new_dimensions(data[i])
-                                 for i in range(start, data.shape[0])], dtype=np.float32)
+                                 for i in range(1, data.shape[0])], dtype=np.float32)
+        print("Center cropped:")
+        print(cropped_data[1].shape)
+        return cropped_data
+
+class RandomlyCropInput(object):
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+
+    def set_new_dimensions(self, data):
+        print(data.shape)
+        x, y, z = data.shape
+        self.starty = random.randint(0, y - self.width)
+        self.startz = random.randint(0, z - self.height)
+        for slice in data:
+            print(slice.shape)
+            slice = slice[self.starty:self.starty + self.width,
+               self.startz:self.startz + self.height]
+
+        return data
+
+    def __call__(self, data):
+        cropped_data = np.array([self.set_new_dimensions(data[i])
+                                 for i in range(data.shape[0])], dtype=np.float32)
+        print("Randomly cropped:")
+        print(cropped_data[1].shape)
+        return cropped_data
+
+class CropCenter3DOutput(object):
+    def __init__(self, cropx, cropy, cropz):
+        self.cropx = cropx
+        self.cropy = cropy
+        self.cropz = cropz
+        self.startx = 0
+        self.starty = 0
+        self.startz = 0
+
+    def set_new_dimensions(self, data):
+        x, y, z = data.shape
+        self.startx = x // 2 - (self.cropx // 2)
+        self.starty = y // 2 - (self.cropy // 2)
+        self.startz = z // 2 - (self.cropz // 2)
+        return data[self.startx:self.startx + self.cropx, self.starty:self.starty + self.cropy, self.startz:self.startz + self.cropz]
+
+    def __call__(self, data):
+        cropped_data = np.array(self.set_new_dimensions(data), dtype=np.float32)
+        print("Center cropped:")
+        print(cropped_data[1].shape)
+        return cropped_data
+
+class RandomlyCropOutput(object):
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+
+    def set_new_dimensions(self, data):
+        print(data.shape)
+        x, y, z = data.shape
+        self.starty = random.randint(0, y - self.width)
+        self.startz = random.randint(0, z - self.height)
+        for slice in data:
+            print(slice.shape)
+            slice = slice[self.starty:self.starty + self.width,
+               self.startz:self.startz + self.height]
+
+        return data
+
+    def __call__(self, data):
+        cropped_data = np.array(self.set_new_dimensions(data), dtype=np.float32)
+        print("Randomly cropped:")
         print(cropped_data[1].shape)
         return cropped_data
