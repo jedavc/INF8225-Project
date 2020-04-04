@@ -1,18 +1,18 @@
 import torch.nn as nn
 from math import sqrt
 
-class ResidualPart(nn.Module):
+class ResidualPartD(nn.Module):
     def __init__(self, indim):
-        super(ResidualPart, self).__init__()
+        super(ResidualPartD, self).__init__()
         self.conv1 = nn.Conv2d(indim, indim*2, kernel_size=1, bias=False)
         self.norm1 = nn.BatchNorm2d(indim*2)
-        self.relu1 = nn.LeakyReLU(0.2, inplace=True)
+        self.relu1 = nn.ReLU(inplace=True)
         self.conv2 = nn.Conv2d(indim*2, indim*2, kernel_size=3, padding=1, bias=False)
         self.norm2 = nn.BatchNorm2d(indim*2)
-        self.relu2 = nn.LeakyReLU(0.2, inplace=True)
+        self.relu2 = nn.ReLU(inplace=True)
         self.conv3 = nn.Conv2d(indim*2, indim, kernel_size=1, bias=False)
         self.norm3 = nn.BatchNorm2d(indim)
-        self.relu3 = nn.LeakyReLU(0.2, inplace=True)
+        self.relu3 = nn.ReLU(inplace=True)
         #parameter initialization
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
