@@ -28,7 +28,7 @@ def loss_gt(gt, pred):
     return - torch.mean(2 * intersection / dn, (0,1))
 
 
-def loss_vae(input_shape, z_mean, z_var, weight_L2=0.1, weight_KL=0.1):
+#def loss_vae(input_shape, z_mean, z_var, weight_L2=0.1, weight_KL=0.1):
 
 
 

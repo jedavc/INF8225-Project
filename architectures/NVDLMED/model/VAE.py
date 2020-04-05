@@ -4,7 +4,7 @@ from torch.distributions.normal import Normal
 
 
 class VAE(nn.Module):
-    def __init__(self, input_shape=(4, 160, 192, 128), output_channels=3):
+    def __init__(self, input_shape=(2, 160, 192, 128), output_channels=4):
         super(VAE, self).__init__()
         self.input_shape = input_shape
         self.output_channels = output_channels
@@ -13,7 +13,7 @@ class VAE(nn.Module):
                                       nn.ReLU(),
                                       nn.Conv3d(in_channels=256, out_channels=16, kernel_size=(3, 3, 3), stride=2, padding=1),
                                       Flatten(),
-                                      nn.Linear(1920, 256))
+                                      nn.Linear(3360, 256))
 
         self.vddraw_block = SamplingBlock(input_shape=256, output_shape=128)
 
