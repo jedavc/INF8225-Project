@@ -9,21 +9,22 @@ class DecoderGT(nn.Module):
         self.output_channels = output_channels
 
         self.first_upsample3d = nn.Sequential(nn.Conv3d(in_channels=input_channels, out_channels=128, kernel_size=(1, 1, 1), stride=1),
-                                              nn.Upsample(scale_factor=2, mode='bilinear'))
+                                              nn.Upsample(scale_factor=2, mode='trilinear'))
 
         self.first_resnetblock = ResNetBlock(in_channel=128, out_channel=128)
 
         self.second_upsample3d = nn.Sequential(nn.Conv3d(in_channels=128, out_channels=64, kernel_size=(1, 1, 1), stride=1),
-                                               nn.Upsample(scale_factor=2, mode='bilinear'))
+                                               nn.Upsample(scale_factor=2, mode='trilinear'))
 
         self.second_resnetblock = ResNetBlock(in_channel=64, out_channel=64)
 
         self.third_upsample3d = nn.Sequential(nn.Conv3d(in_channels=64, out_channels=32, kernel_size=(1, 1, 1), stride=1),
-                                              nn.Upsample(scale_factor=2, mode='bilinear'))
+                                              nn.Upsample(scale_factor=2, mode='trilinear'))
 
         self.third_resnetblock = ResNetBlock(in_channel=32, out_channel=32)
 
-        self.blue_decoder = nn.Conv3d(in_channels=x.shape[1], out_channels=32, kernel_size=(3, 3, 3), stride=1)
+        self.output_gt = nn.Sequential(nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=1, padding=1),
+                                       nn.Conv3d(in_channels=32, out_channels=self.output_channels, kernel_size=(1, 1, 1), stride=1))
 
     def forward(self, x1, x2, x3, x4):
         # First Decoder ResNetBlock (output filters = 128)
@@ -41,10 +42,7 @@ class DecoderGT(nn.Module):
         x = torch.add(x, x1)
         x = self.third_resnetblock(x)
 
-        # Blue Decoder (output filters = 32)
-        x = nn.Conv3d(in_channels=x.shape[1], out_channels=32, kernel_size=(3, 3, 3), stride=1)(x)
-
         # Output Block
-        out_GT = nn.Conv3d(in_channels=x.shape[1], out_channels=self.output_channels, kernel_size=(1, 1, 1), stride=1)(x)
+        out_GT = self.output_gt(x)
 
         return out_GT

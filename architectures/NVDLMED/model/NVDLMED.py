@@ -14,10 +14,8 @@ class NVDLMED(nn.Module):
         self.vae = VAE(input_shape=input_shape, output_channels=output_vae)
 
     def forward(self, x):
-        encoded = self.encoder(x)
-        decoded_gt = self.decoder_gt(encoded)
-        decoded_vae = self.vae(encoded)
+        x1, x2, x3, x4 = self.encoder(x)
+        decoded_gt = self.decoder_gt(x1, x2, x3, x4)
+        decoded_vae = self.vae(x4)
 
         return decoded_gt, decoded_vae
-
-print(list(NVDLMED().parameters()))
