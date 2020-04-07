@@ -3,14 +3,14 @@ import torch
 
 
 class PAM(nn.Module):
-    def __init__(self, in_dim):
+    def __init__(self, input_channels):
         super(PAM, self).__init__()
 
-        self.in_dim = in_dim
+        self.input_channels = input_channels
 
-        self.query_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim//8, kernel_size=1)
-        self.key_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim//8, kernel_size=1)
-        self.value_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim, kernel_size=1)
+        self.query_conv = nn.Conv2d(in_channels=input_channels, out_channels=input_channels//8, kernel_size=1)
+        self.key_conv = nn.Conv2d(in_channels=input_channels, out_channels=input_channels//8, kernel_size=1)
+        self.value_conv = nn.Conv2d(in_channels=input_channels, out_channels=input_channels, kernel_size=1)
         self.gamma = nn.Parameter(torch.zeros(1), requires_grad=True)
 
         self.softmax = nn.Softmax(dim=-1)
