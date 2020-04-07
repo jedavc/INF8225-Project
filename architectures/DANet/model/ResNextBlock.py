@@ -1,6 +1,5 @@
-import torch
 from torch import nn
-from torchvision.models import resnext101_32x8d, resnet101
+from torchvision.models import resnext101_32x8d
 
 
 class ResNextBlock(nn.Module):
