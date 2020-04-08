@@ -2,9 +2,9 @@ from torch import nn
 from torchvision.models import resnext101_32x8d
 
 
-class ResNextBlock(nn.Module):
+class ResNextModule(nn.Module):
     def __init__(self):
-        super(ResNextBlock, self).__init__()
+        super(ResNextModule, self).__init__()
 
         self.resnext = self.reformated_resnext()
 

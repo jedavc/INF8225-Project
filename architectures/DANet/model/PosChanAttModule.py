@@ -2,6 +2,48 @@ from torch import nn
 import torch
 
 
+class PosChanAttModule(nn.Module):
+    def __init__(self, input_channels):
+        super(PosChanAttModule, self).__init__()
+
+        self.cam = CAM(input_channels)
+        self.pam = PAM(input_channels)
+
+    def forward(self, x):
+        attn_pam = self.pam(x)
+        attn_cam = self.cam(x)
+
+        return attn_pam + attn_cam
+
+
+class CAM(nn.Module):
+    def __init__(self, input_channels):
+        super(CAM, self).__init__()
+
+        self.input_channels = input_channels
+
+        self.gamma = nn.Parameter(torch.zeros(1), requires_grad=True)
+        self.softmax = nn.Softmax(dim=-1)
+
+    def forward(self, x):
+        batch, C, H, W = x.size()
+
+        proj_query = x.view(batch, C, -1)
+        proj_key = x.view(batch, C, -1).permute(0, 2, 1)
+
+        energy = torch.bmm(proj_query, proj_key)
+        energy_new = torch.max(energy, -1, keepdim=True)[0].expand_as(energy) - energy
+        attention = self.softmax(energy_new)
+        proj_value = x.view(batch, C, -1)
+
+        out = torch.bmm(attention, proj_value)
+        out = out.view(batch, C, H, W)
+
+        out = self.gamma * out + x
+
+        return out
+
+
 class PAM(nn.Module):
     def __init__(self, input_channels):
         super(PAM, self).__init__()
@@ -30,5 +72,4 @@ class PAM(nn.Module):
         out = self.gamma * out + x
 
         return out
-
 
