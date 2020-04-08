@@ -5,7 +5,7 @@ from .PosChanAttModule import *
 
 
 class SemGuidedAttModule(nn.Module):
-    def __init__(self, input_channels):
+    def __init__(self):
         super(SemGuidedAttModule, self).__init__()
 
         self.semModule1 = SementicModule(128)
@@ -20,16 +20,40 @@ class SemGuidedAttModule(nn.Module):
         self.sem_att_block2_3 = SemAttBlock(64, self.semModule2)
         self.sem_att_block2_4 = SemAttBlock(64, self.semModule2)
 
+        self.predict1 = nn.Conv2d(64, 5, kernel_size=1)
+        self.predict2 = nn.Conv2d(64, 5, kernel_size=1)
+        self.predict3 = nn.Conv2d(64, 5, kernel_size=1)
+        self.predict4 = nn.Conv2d(64, 5, kernel_size=1)
+
     def forward(self, fsp, fms, fsms):
         att1_1, semVector1_1, semModule1_1 = self.sem_att_block1_1(fsms[0])
         att1_2, semVector1_2, semModule1_2 = self.sem_att_block1_2(fsms[1])
         att1_3, semVector1_3, semModule1_3 = self.sem_att_block1_3(fsms[2])
         att1_4, semVector1_4, semModule1_4 = self.sem_att_block1_4(fsms[3])
 
-        att2_1, semVector2_1, semModule1_1 = self.semattblock2_1(fsms[0])
-        att2_2, semVector2_2, semModule1_2 = self.semattblock2_2(fsms[1])
-        att2_3, semVector2_3, semModule1_3 = self.semattblock2_3(fsms[2])
-        att2_4, semVector2_4, semModule1_4 = self.semattblock2_4(fsms[3])
+        fa1 = torch.cat((fsp[0], att1_1 * fms), 1)
+        att2_1, semVector2_1, semModule2_1 = self.semattblock2_1(fa1)
+
+        fa2 = torch.cat((fsp[1], att1_2 * fms), 1)
+        att2_2, semVector2_2, semModule2_2 = self.semattblock2_2(fa2)
+
+        fa3 = torch.cat((fsp[2], att1_3 * fms), 1)
+        att2_3, semVector2_3, semModule2_3 = self.semattblock2_3(fa3)
+
+        fa4 = torch.cat((fsp[3], att1_4 * fms), 1)
+        att2_4, semVector2_4, semModule2_4 = self.semattblock2_4(fa4)
+
+        predict1 = self.predict1(att2_1)
+        predict2 = self.predict2(att2_2)
+        predict3 = self.predict3(att2_3)
+        predict4 = self.predict4(att2_4)
+
+        return (semVector1_1, semVector1_2, semVector1_3, semVector1_4), \
+               (semVector2_1, semVector2_2, semVector2_3, semVector2_4), \
+               (fa1, fa2, fa3, fa4), \
+               (semModule1_1, semModule1_2, semModule1_3, semModule1_4), \
+               (semModule2_1, semModule2_2, semModule2_3, semModule2_4), \
+               (predict1, predict2, predict3, predict4)
 
 
 class SemAttBlock(nn.Module):
@@ -40,7 +64,7 @@ class SemAttBlock(nn.Module):
         self.semModule = sementic_module
 
         self.conv_sem = nn.Conv2d(128, 64, kernel_size=3, padding=1)
-        self.conv_dot = nn.Conv2d(64,64,1)
+        self.conv_dot = nn.Conv2d(64, 64, 1)
 
     def forward(self, x):
         semVector, semModule = self.semModule(x)
