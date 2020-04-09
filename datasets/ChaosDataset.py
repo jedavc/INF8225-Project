@@ -2,6 +2,7 @@ from torch.utils.data import Dataset
 from PIL import Image, ImageOps
 from random import random
 import os
+import glob
 
 
 class ChaosDataset(Dataset):
@@ -9,7 +10,6 @@ class ChaosDataset(Dataset):
                  mode,
                  root_dir,
                  transform=None,
-                 transform_mask=None,
                  augment=None,
                  equalize=False):
 
@@ -17,7 +17,6 @@ class ChaosDataset(Dataset):
         self.files = self.load_files(root_dir, mode)
 
         self.transform = transform
-        self.transform_mask = transform_mask
         self.augment = augment
         self.equalize = equalize
 
@@ -32,7 +31,7 @@ class ChaosDataset(Dataset):
         images.sort()
         masks = os.listdir(mask_path)
         masks.sort()
-        
+
         for img, mask in zip(images, masks):
             file = (os.path.join(img_path, img), os.path.join(mask_path, mask))
             files.append(file)
@@ -52,15 +51,14 @@ class ChaosDataset(Dataset):
 
         if self.transform:
             img = self.transform(img)
+            mask = self.transform(mask)
 
-        if self.transform_mask:
-            mask = self.transform_mask(mask)
-
-        return img, mask, img_path
+        return img, mask
 
 
 class Augment(object):
-    def __int__(self, prob=0.5):
+
+    def __init__(self, prob=0.5):
         self.prob = prob
 
     def __call__(self, img, mask):
@@ -78,3 +76,60 @@ class Augment(object):
             mask = mask.rotate(angle)
 
         return img, mask
+
+import pydicom
+import cv2
+import numpy as np
+import shutil
+
+def create_image_dataset(root_dir="../rawdata/CHAOS_Train_Sets/Train_Sets/MR", out_dir="../rawdata/CHAOS_"):
+    try:
+        os.makedirs(out_dir + "/train")
+        os.makedirs(out_dir + "/train/Img")
+        os.makedirs(out_dir + "/train/GT")
+        os.makedirs(out_dir + "/val")
+        os.makedirs(out_dir + "/val/Img")
+        os.makedirs(out_dir + "/val/GT")
+        os.makedirs(out_dir + "/test")
+        os.makedirs(out_dir + "/test/Img")
+        os.makedirs(out_dir + "/test/GT")
+    except:
+        pass
+
+    nb_patient = os.listdir(root_dir)
+    for i, no_patient in enumerate(nb_patient):
+        dcm_path = os.path.join(root_dir, no_patient, "T1DUAL/DICOM_anon/InPhase")
+        gt_path = os.path.join(root_dir, no_patient, "T1DUAL/Ground")
+
+        dcm_files = glob.glob(dcm_path + "/*.dcm")
+        gt_files = glob.glob(gt_path + "/*.png")
+
+        for j, dcm_file in enumerate(dcm_files):
+            ds = pydicom.dcmread(dcm_file)
+            pixel_array_numpy = ds.pixel_array.astype(float)
+            img = Image.open(gt_files[j])
+
+            #Center crop dcm
+            if pixel_array_numpy.shape[0] > 256:
+                centerX = int(pixel_array_numpy.shape[0] / 2)
+                centerY = int(pixel_array_numpy.shape[1] / 2)
+                newImage = pixel_array_numpy[centerX - 128:centerX + 128, centerY - 128:centerY + 128]
+                pixel_array_numpy = newImage
+
+            # Center crop png
+            if img.size[0] > 256:
+                w, h = img.size
+                left = (w - 256) / 2
+                top = (h - 256) / 2
+                right = (w + 256) / 2
+                bottom = (h + 256) / 2
+                img = img.crop((left, top, right, bottom))
+
+            #Normalise to 0-255
+            pixel_array_numpy_gray = (pixel_array_numpy - np.min(pixel_array_numpy)) / (np.max(pixel_array_numpy) - np.min(pixel_array_numpy))*255
+
+            name = "Subj_" + no_patient + "slice_" + str(j + 1) + ".png"
+            cv2.imwrite(os.path.join(out_dir, "train/Img", name), pixel_array_numpy_gray.astype('uint8'))
+            img.save(os.path.join(out_dir, "train/GT", name))
+
+# create_image_dataset()
