@@ -32,16 +32,16 @@ class SemGuidedAttModule(nn.Module):
         att1_4, semVector1_4, semModule1_4 = self.sem_att_block1_4(fsms[3])
 
         fa1 = torch.cat((fsp[0], att1_1 * fms), 1)
-        att2_1, semVector2_1, semModule2_1 = self.semattblock2_1(fa1)
+        att2_1, semVector2_1, semModule2_1 = self.sem_att_block2_1(fa1)
 
         fa2 = torch.cat((fsp[1], att1_2 * fms), 1)
-        att2_2, semVector2_2, semModule2_2 = self.semattblock2_2(fa2)
+        att2_2, semVector2_2, semModule2_2 = self.sem_att_block2_2(fa2)
 
         fa3 = torch.cat((fsp[2], att1_3 * fms), 1)
-        att2_3, semVector2_3, semModule2_3 = self.semattblock2_3(fa3)
+        att2_3, semVector2_3, semModule2_3 = self.sem_att_block2_3(fa3)
 
         fa4 = torch.cat((fsp[3], att1_4 * fms), 1)
-        att2_4, semVector2_4, semModule2_4 = self.semattblock2_4(fa4)
+        att2_4, semVector2_4, semModule2_4 = self.sem_att_block2_4(fa4)
 
         predict1 = self.predict1(att2_1)
         predict2 = self.predict2(att2_2)

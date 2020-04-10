@@ -3,11 +3,28 @@ import torch
 
 
 class PosChanAttModule(nn.Module):
-    def __init__(self, input_channels):
+    def __init__(self, in_channels):
         super(PosChanAttModule, self).__init__()
 
-        self.cam = CAM(input_channels)
-        self.pam = PAM(input_channels)
+        self.cam = nn.Sequential(
+            nn.Conv2d(in_channels * 2, in_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(in_channels),
+            nn.PReLU(),
+            CAM(in_channels),
+            nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(in_channels),
+            nn.PReLU()
+        )
+
+        self.pam = nn.Sequential(
+            nn.Conv2d(in_channels * 2, in_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(in_channels),
+            nn.PReLU(),
+            PAM(in_channels),
+            nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(in_channels),
+            nn.PReLU()
+        )
 
     def forward(self, x):
         attn_pam = self.pam(x)
