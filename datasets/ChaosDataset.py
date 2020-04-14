@@ -3,20 +3,23 @@ from PIL import Image, ImageOps
 from random import random
 import os
 import glob
+import torch
 
 
 class ChaosDataset(Dataset):
     def __init__(self,
                  mode,
                  root_dir,
-                 transform=None,
+                 transform_input=None,
+                 transform_mask=None,
                  augment=None,
                  equalize=False):
 
         self.root_dir = root_dir
         self.files = self.load_files(root_dir, mode)
 
-        self.transform = transform
+        self.transform_input = transform_input
+        self.transform_mask = transform_mask
         self.augment = augment
         self.equalize = equalize
 
@@ -49,11 +52,33 @@ class ChaosDataset(Dataset):
         if self.augment:
             img, mask = self.augment(img, mask)
 
-        if self.transform:
-            img = self.transform(img)
-            mask = self.transform(mask)
+        if self.transform_input:
+            img = self.transform_input(img)
+            mask_t = self.transform_input(mask)
 
-        return img, mask
+        if self.transform_mask:
+            mask = self.transform_mask(mask)
+
+        return img, mask_t, img_path, torch.from_numpy(mask)
+
+
+class GrayToClass(object):
+
+    def __init__(self):
+        self.class1 = 63
+        self.class2 = 126
+        self.class3 = 189
+        self.class4 = 252
+
+    def __call__(self, mask):
+        numpy_image = np.array(mask)
+
+        numpy_image = np.where(numpy_image == self.class1, 1, numpy_image)
+        numpy_image = np.where(numpy_image == self.class2, 2, numpy_image)
+        numpy_image = np.where(numpy_image == self.class3, 3, numpy_image)
+        numpy_image = np.where(numpy_image == self.class4, 4, numpy_image)
+
+        return numpy_image
 
 
 class Augment(object):
@@ -131,5 +156,3 @@ def create_image_dataset(root_dir="../rawdata/CHAOS_Train_Sets/Train_Sets/MR", o
             name = "Subj_" + no_patient + "slice_" + str(j + 1) + ".png"
             cv2.imwrite(os.path.join(out_dir, "train/Img", name), pixel_array_numpy_gray.astype('uint8'))
             img.save(os.path.join(out_dir, "train/GT", name))
-
-# create_image_dataset()

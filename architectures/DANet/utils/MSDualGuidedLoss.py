@@ -9,7 +9,7 @@ class MSDualGuidedLoss(nn.Module):
         self.ce_loss = nn.CrossEntropyLoss()
         self.mse_loss = nn.MSELoss()
 
-    def forward(self, semVector1, semVector2, fsms, fai, semModule1, semModule2, predict1, predict2, mask):
+    def forward(self, semVector1, semVector2, fsms, fai, semModule1, semModule2, predict1, predict2, mask, mask_t):
         segmentation_class = getTargetSegmentation(mask)
 
         predict_loss = sum([self.ce_loss(predict1[i], segmentation_class) + self.ce_loss(predict2[i], segmentation_class) for i in range(len(predict1))])
