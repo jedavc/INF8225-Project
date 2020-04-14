@@ -54,12 +54,12 @@ class ChaosDataset(Dataset):
 
         if self.transform_input:
             img = self.transform_input(img)
-            mask_t = self.transform_input(mask)
 
         if self.transform_mask:
             mask = self.transform_mask(mask)
+            mask = torch.from_numpy(mask).long()
 
-        return img, mask_t, img_path, torch.from_numpy(mask)
+        return img, mask, img_path
 
 
 class GrayToClass(object):

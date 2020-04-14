@@ -1,7 +1,9 @@
 import torch
 from torch import nn
+import torch.nn.functional as F
 import os
 import torchvision
+
 
 def predToSegmentation(pred):
     Max = pred.max(dim=1, keepdim=True)[0]
@@ -9,56 +11,39 @@ def predToSegmentation(pred):
     return (x == 1).float()
 
 
-def getOneHotSegmentation(batch):
-    backgroundVal = 0
+def get_onehot_segmentation(target):
+    batch_size, height, width = target.size()
+    one_hot = torch.zeros(batch_size, 5, height, width, dtype=torch.float).cuda()
 
-    # Chaos MRI (These values are to set label values as 0,1,2,3 and 4)
-    label1 = 0.24705882
-    label2 = 0.49411765
-    label3 = 0.7411765
-    label4 = 0.9882353
-
-    oneHotLabels = torch.cat(
-        (batch == backgroundVal, batch == label1, batch == label2, batch == label3, batch == label4),
-        dim=1)
-
-    return oneHotLabels.float()
+    return one_hot.scatter_(1, target.unsqueeze(1), 1.0)
 
 
-def getTargetSegmentation(batch):
-    # input is 1-channel of values between 0 and 1
-    # values are as follows : 0, 0.3137255, 0.627451 and 0.94117647
-    # output is 1 channel of discrete values : 0, 1, 2 and 3
-
-    denom = 0.24705882  # for Chaos MRI  Dataset this value
-
-    return (batch / denom).round().long().squeeze(dim=1)
+# def dice_score(pred, target):
+#     batch, num_class, height, width = pred.size()
+#
+#     num = pred * target
+#     num = num.view(batch, num_class, -1).sum(dim=2)
+#
+#     den = pred.view(batch, num_class, -1).sum(dim=2)
+#     den2 = target.view(batch, num_class, -1).sum(dim=2)
+#
+#     dice = (2 * num + 1e-8) / (den + den2 + 1e-8)
+#
+#     return dice.mean(dim=0)[1:]
 
 
 def dice_score(pred, target):
-    batch, num_class, height, width = target.size()
+    pred_soft = F.softmax(pred, dim=1)
+    pred_onehot = predToSegmentation(pred_soft)
+    target_onehot = get_onehot_segmentation(target)
 
-    num = pred * target
-    num = num.view(batch, num_class, -1).sum(dim=2)
+    dims = (1, 2, 3)
+    intersection = torch.sum(pred_onehot * target_onehot, dims)
+    cardinality = torch.sum(pred_onehot + target_onehot, dims)
 
-    den = pred.view(batch, num_class, -1).sum(dim=2)
-    den2 = target.view(batch, num_class, -1).sum(dim=2)
+    dice = 2. * intersection / (cardinality + 1e-8)
 
-    dice = (2 * num + 1e-8) / (den + den2 + 1e-8)
-
-    return dice.mean(dim=0)[1:]
-
-
-def dice_comme_eux(pred, target):
-    num = pred * target
-    num = num.sum(dim=3).sum(dim=2).sum(dim=0)
-
-    den = pred.sum(dim=3).sum(dim=2).sum(dim=0)
-    den2 = target.sum(dim=3).sum(dim=2).sum(dim=0)
-
-    dice = (2 * num + 1e-8) / (den + den2 + 1e-8)
-
-    return dice[1:]
+    return torch.mean(dice)
 
 
 def getSingleImage(pred):

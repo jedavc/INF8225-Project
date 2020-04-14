@@ -35,51 +35,45 @@ if __name__ == "__main__":
 
             net.train()
             loss_train = []
-            for (image, mask, img_path, mask_test) in train_loader:
-                image, mask, mask_test = image.cuda(), mask.cuda(), mask_test.cuda()
+            for (image, mask, img_path) in train_loader:
+                image, mask = image.cuda(), mask.cuda()
 
                 optimizer.zero_grad()
                 net.zero_grad()
+
                 semVector1, semVector2, fsms, fai, semModule1, semModule2, predict1, predict2 = net(image)
 
-                # ICI A MODIF
-                segmentation_prediction = sum(list(predict1) + list(predict2)) / 8
-                predClass_y = softMax(segmentation_prediction)
-                segmentation_prediction_ones = predToSegmentation(predClass_y)
-                Segmentation_planes = getOneHotSegmentation(mask)
-                dice = dice_score(segmentation_prediction_ones, Segmentation_planes)
-                #
-
                 optimizer.zero_grad()
-                loss = loss_module(semVector1, semVector2, fsms, fai, semModule1, semModule2, predict1, predict2, mask, mask_test)
-                loss.backward()
+                loss = loss_module(semVector1, semVector2, fsms, fai, semModule1, semModule2, predict1, predict2, mask)
 
+                loss.backward()
                 optimizer.step()
 
                 loss_train.append(loss.cpu().data.numpy())
 
-                training_bar.set_postfix_str("Mean Dice: {:.4f}, Dice1: {:.4f}, Dice2: {:.4f}, Dice3: {:.4f}, Dice4: {:.4f}".format(
-                    dice.mean().item(), dice[0].item(), dice[1].item(), dice[2].item(), dice[3].item())
-                )
+                segmentation_prediction = sum(list(predict1) + list(predict2)) / 8
+                dice = dice_score(segmentation_prediction, mask)
+
+                training_bar.set_postfix_str("Mean Dice Score: {:.4f}".format(dice.item()))
                 training_bar.update()
 
         print("\nEpoch {}: loss -> {}\n".format(i + 1, np.mean(loss_train)))
 
         with tqdm(total=len(val_loader)) as val_bar:
             val_bar.set_description('[Validation]')
+
             net.eval()
-            dice_val = torch.zeros(len(val_loader), 4)
-            for i, (val_image, val_mask, img_path) in enumerate(val_loader):
+            dice_val = torch.zeros(len(val_loader), 1)
+            for i, (val_image, val_mask, val_img_path) in enumerate(val_loader):
                 val_image, val_mask = val_image.cuda(), val_mask.cuda()
 
                 with torch.no_grad():
                     seg_pred = net(val_image)
                     predClass_y_val = softMax(seg_pred)
-                    Segmentation_planes_val = getOneHotSegmentation(val_mask)
-                    segmentation_prediction_ones_val = predToSegmentation(predClass_y_val)
-                    dice_val[i] = dice_score(segmentation_prediction_ones_val, Segmentation_planes_val)
 
-                    saveImages_for3D(predClass_y_val, img_path)
+                    dice_val[i] = dice_score(seg_pred, val_mask)
+
+                    saveImages_for3D(predClass_y_val, val_img_path)
 
                 val_bar.update()
 
