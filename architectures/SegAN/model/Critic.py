@@ -5,10 +5,9 @@ from architectures.SegAN.model.ConvolutionalPart import ConvolutionalPart
 
 channel_dim = 3
 ndf = 64
-class CriticNetwork(nn.Module):
-    def __init__(self, ngpu):
-        super(CriticNetwork, self).__init__()
-        self.ngpu = ngpu
+class Critic(nn.Module):
+    def __init__(self):
+        super(Critic, self).__init__()
         self.convblock1 = nn.Sequential(
             # input is (channel_dim) x 128 x 128
             nn.Conv2d(channel_dim, ndf, 7, 2, 3, bias=False),
@@ -109,25 +108,22 @@ class CriticNetwork(nn.Module):
                 m.bias.data.zero_()
 
     def forward(self, input):
-        if isinstance(input.data, torch.cuda.FloatTensor) and self.ngpu is 1:
-            batchsize = input.size()[0]
-            out1 = self.convblock1(input)
-            # out1 = self.convblock1_1(out1)
-            out2 = self.convblock2(out1)
-            # out2 = self.convblock2_1(out2)
-            out3 = self.convblock3(out2)
-            # out3 = self.convblock3_1(out3)
-            out4 = self.convblock4(out3)
-            # out4 = self.convblock4_1(out4)
-            out5 = self.convblock5(out4)
-            # out5 = self.convblock5_1(out5)
-            out6 = self.convblock6(out5)
-            # out6 = self.convblock6_1(out6) + out6
-            output = torch.cat((input.view(batchsize,-1),1*out1.view(batchsize,-1),
-                                2*out2.view(batchsize,-1),2*out3.view(batchsize,-1),
-                                2*out4.view(batchsize,-1),2*out5.view(batchsize,-1),
-                                4*out6.view(batchsize,-1)),1)
-        else:
-            print('For now we only support one GPU')
+        batchsize = input.size()[0]
+        out1 = self.convblock1(input)
+        # out1 = self.convblock1_1(out1)
+        out2 = self.convblock2(out1)
+        # out2 = self.convblock2_1(out2)
+        out3 = self.convblock3(out2)
+        # out3 = self.convblock3_1(out3)
+        out4 = self.convblock4(out3)
+        # out4 = self.convblock4_1(out4)
+        out5 = self.convblock5(out4)
+        # out5 = self.convblock5_1(out5)
+        out6 = self.convblock6(out5)
+        # out6 = self.convblock6_1(out6) + out6
+        output = torch.cat((input.view(batchsize,-1),1*out1.view(batchsize,-1),
+                            2*out2.view(batchsize,-1),2*out3.view(batchsize,-1),
+                            2*out4.view(batchsize,-1),2*out5.view(batchsize,-1),
+                            4*out6.view(batchsize,-1)),1)
 
         return output
