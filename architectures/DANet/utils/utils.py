@@ -1,9 +1,12 @@
+import nibabel as nib
+from PIL import Image
 import torch
 import os
 import torch.nn.functional as F
 import torchvision
 from architectures.DANet.utils.constant import *
 import numpy as np
+import re
 
 
 def prediction_to_segmentation(pred):
@@ -24,12 +27,49 @@ def prediction_to_normalized_pil(pred_onehot):
     return out.sum(dim=1, keepdim=True)
 
 
-def prediction_to_png(pred, img_path, out_path='../rawdata/CHAOS_/val/result'):
-    if not os.path.exists(out_path):
-        os.makedirs(out_path)
-
+def prediction_to_png(pred, img_name, out_path='../rawdata/CHAOS_/val/Result'):
     pred_onehot = prediction_to_segmentation(pred)
     normalized_pil = prediction_to_normalized_pil(pred_onehot)
 
-    file_name = os.path.abspath(img_path[0]).split("\\")[-1]
-    torchvision.utils.save_image(normalized_pil.data, os.path.join(out_path, file_name))
+    torchvision.utils.save_image(normalized_pil.data, os.path.join(out_path, img_name[0]))
+
+
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+
+def natural_keys(text):
+    return [atoi(c) for c in re.split(r'(\d+)', text)]
+
+
+def find_images(path, regex=".*"):
+    image_names = []
+    if os.path.exists(path):
+        for file in os.listdir(path):
+            if file.endswith(".png") and re.match(regex, file):
+                image_names.append(os.path.join(path, file))
+
+    image_names.sort(key=natural_keys)
+
+    return image_names
+
+
+def create_nii_from_images(img_names, out_path="../rawdata/CHAOS_/val/Volume/Pred/Subj_1"):
+    vol_numpy = np.zeros((IMG_HEIGTH, IMG_WIDTH, len(img_names)))
+    for i, file in enumerate(img_names):
+        imagePIL = np.array(Image.open(file).convert('L'))
+        vol_numpy[:, :, i] = imagePIL / CLASS_INCREMENT
+
+    xform = np.eye(4) * 2
+    imgNifti = nib.nifti1.Nifti1Image(vol_numpy, xform)
+
+    nib.save(imgNifti, out_path)
+
+
+def create_3d_volume(path, out_path):
+    files = os.listdir(path)
+    subj_no = set([re.match("Subj_[0-9]*", file).group() for file in files])
+
+    for subj in subj_no:
+        img_names = find_images(path, subj)
+        create_nii_from_images(img_names, out_path + "/" + subj)

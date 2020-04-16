@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
             net.train()
             loss_train = []
-            for (image, mask, img_path) in train_loader:
+            for (image, mask, _) in train_loader:
                 image, mask = image.cuda(), mask.cuda()
                 semVector1, semVector2, fsms, fai, semModule1, semModule2, predict1, predict2 = net(image)
 
@@ -63,17 +63,18 @@ if __name__ == "__main__":
 
             net.eval()
             dice_val = torch.zeros(len(val_loader), 5)
-            for i, (val_image, val_mask, val_img_path) in enumerate(val_loader):
+            for i, (val_image, val_mask, val_img_name) in enumerate(val_loader):
                 val_image, val_mask = val_image.cuda(), val_mask.cuda()
 
                 with torch.no_grad():
                     seg_pred = net(val_image)
                     dice_val[i] = dice_score(seg_pred, val_mask)
 
-                    prediction_to_png(seg_pred, val_img_path)
+                    prediction_to_png(seg_pred, val_img_name)
 
                 val_bar.update()
 
-        dice_3d = dice_score_3d()
+            create_3d_volume("../rawdata/CHAOS_/val/Result", "../rawdata/CHAOS_/val/Volume/Pred")
+            dice_3d = dice_score_3d("../rawdata/CHAOS_/val/Volume")
 
         print(dice_val.mean(dim=0))

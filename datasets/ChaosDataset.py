@@ -4,6 +4,7 @@ from random import random
 import os
 import glob
 import torch
+import re
 
 
 class ChaosDataset(Dataset):
@@ -45,10 +46,14 @@ class ChaosDataset(Dataset):
         return len(self.files)
 
     def __getitem__(self, idx):
+        # Load Pil image and mask from path
         img_path, mask_path = self.files[idx]
+        file_name = os.path.abspath(mask_path).split("\\")[-1]
+
         img = Image.open(img_path).convert("L")
         mask = Image.open(mask_path).convert("L")
 
+        # Apply transformations
         if self.augment:
             img, mask = self.augment(img, mask)
 
@@ -59,7 +64,7 @@ class ChaosDataset(Dataset):
             mask = self.transform_mask(mask)
             mask = torch.from_numpy(mask).long()
 
-        return img, mask, img_path
+        return img, mask, file_name
 
 
 class GrayToClass(object):

@@ -1,6 +1,10 @@
 from architectures.DANet.utils.utils import prediction_to_segmentation
 import torch
 import os
+from architectures.DANet.utils.constant import *
+import numpy as np
+import nibabel as nib
+from medpy.metric.binary import dc
 
 
 def get_onehot_segmentation(target):
@@ -23,6 +27,28 @@ def dice_score(pred, target):
     return torch.mean(dice, dim=0)
 
 
-def dice_score_3d(path="../CHAOS_/val/result"):
-    subjects_folder = os.listdir(path)
-    for
+def dice_score_3d(volume_path="../rawdata/CHAOS_/val/Volume"):
+    pred_volume_files = os.listdir(volume_path + "/Pred")
+    gt_volume_files = os.listdir(volume_path + "/GT")
+
+    dsc_3d = np.zeros((len(pred_volume_files), NUMBER_CLASS))
+    for subj_i in range(len(pred_volume_files)):
+        pred_path = os.path.join(volume_path + "/Pred", pred_volume_files[subj_i])
+        gt_path = os.path.join(volume_path + "/GT", gt_volume_files[subj_i])
+
+        pred_volume = nib.load(pred_path).get_data()
+        gt_volume = nib.load(gt_path).get_data()
+
+        for organ_class in range(NUMBER_CLASS):
+            single_organ_pred = np.zeros(pred_volume.shape, dtype=np.int8)
+            single_organ_gt = np.zeros(gt_volume.shape, dtype=np.int8)
+
+            idx_pred = np.where(pred_volume == organ_class + 1)
+            single_organ_pred[idx_pred] = 1
+
+            idx_gt = np.where(gt_volume == organ_class + 1)
+            single_organ_gt[idx_gt] = 1
+
+            dsc_3d[subj_i, organ_class] = dc(single_organ_pred, single_organ_gt)
+
+    return dsc_3d
