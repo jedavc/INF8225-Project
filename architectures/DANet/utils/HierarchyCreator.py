@@ -10,7 +10,7 @@ def create_folders(root_dir):
         for sub_folder in ["GT", "Img"]:
             os.makedirs(os.path.join(root_dir, location, sub_folder), exist_ok=True)
 
-        if location in["val", "test"]:
+        if location in ["val", "test"]:
             for result_sub_folder in ["Result", "Volume/Pred", "Volume/GT"]:
                 os.makedirs(os.path.join(root_dir, location, result_sub_folder), exist_ok=True)
 
@@ -54,14 +54,17 @@ def create_hierarchy(data_dir, out_dir, split=[0.75, 0.1, 0.15]):
         gt_path = os.path.join(data_dir, no_patient, "T1DUAL/Ground")
 
         dcm_files = glob.glob(dcm_path + "/*.dcm")
+        dcm_files.sort(key=natural_keys)
+
         gt_files = glob.glob(gt_path + "/*.png")
+        gt_files.sort(key=natural_keys)
 
         for j, dcm_file in enumerate(dcm_files):
             ds = pydicom.dcmread(dcm_file)
             pixel_array_numpy = ds.pixel_array.astype(float)
             img = Image.open(gt_files[j])
 
-            #Center crop dcm
+            # Center crop dcm
             if pixel_array_numpy.shape[0] > 256:
                 pixel_array_numpy = crop_dcm(pixel_array_numpy)
 
@@ -69,9 +72,9 @@ def create_hierarchy(data_dir, out_dir, split=[0.75, 0.1, 0.15]):
             if img.size[0] > 256:
                 img = crop_png(img)
 
-            #Normalise to 0-255
-            pixel_array_numpy_gray = (pixel_array_numpy - np.min(pixel_array_numpy)) / (np.max(pixel_array_numpy) - np.min(pixel_array_numpy)) * 255
-
+            # Normalise to 0-255
+            pixel_array_numpy_gray = (pixel_array_numpy - np.min(pixel_array_numpy)) / (
+                        np.max(pixel_array_numpy) - np.min(pixel_array_numpy)) * 255
 
             name = "Subj_" + no_patient + "slice_" + str(j + 1) + ".png"
             location = get_location(i, len(nb_patient), split)

@@ -48,7 +48,7 @@ class ChaosDataset(Dataset):
     def __getitem__(self, idx):
         # Load Pil image and mask from path
         img_path, mask_path = self.files[idx]
-        file_name = os.path.abspath(mask_path).split("\\")[-1]
+        file_name = os.path.abspath(mask_path).replace("\\", "/").split("/")[-1]
 
         img = Image.open(img_path).convert("L")
         mask = Image.open(mask_path).convert("L")

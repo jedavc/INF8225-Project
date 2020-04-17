@@ -119,12 +119,12 @@ def run_training(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', default='../rawdata/CHAOS_Train_Sets/Train_Sets/MR', type=str)
-    parser.add_argument('--root_dir', default='../rawdata/chaos', type=str)
+    parser.add_argument('--root_dir', default='../rawdata/chaos-test', type=str)
     parser.add_argument('--num_workers', default=0, type=int)
     parser.add_argument('--batch_size', default=2, type=int)
     parser.add_argument('--epochs', default=150, type=int)
     parser.add_argument('--lr', default=0.001, type=float)
-    parser.add_argument('--create_hierarchy', default=False, type=bool)
+    parser.add_argument('--create_hierarchy', default=False, action='store_true')
     args = parser.parse_args()
 
     if args.create_hierarchy:
