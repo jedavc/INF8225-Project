@@ -34,7 +34,7 @@ def volume_similarity(pred, target):
     return 1.0 - abs(a - b) / (a + b)
 
 
-def calculate_3d_metrics(volume_path="../rawdata/CHAOS_/val/Volume"):
+def calculate_3d_metrics(volume_path):
     pred_volume_files = os.listdir(volume_path + "/Pred")
     gt_volume_files = os.listdir(volume_path + "/GT")
 

@@ -44,7 +44,7 @@ def get_location(i, size, split):
         return "test"
 
 
-def create_hierarchy(data_dir="../rawdata/CHAOS_Train_Sets/Train_Sets/MR", out_dir="../rawdata/CHAOS_", split=[0.75, 0.1, 0.15]):
+def create_hierarchy(data_dir, out_dir, split=[0.75, 0.1, 0.15]):
     create_folders(out_dir)
 
     nb_patient = os.listdir(data_dir)

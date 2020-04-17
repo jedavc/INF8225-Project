@@ -27,7 +27,7 @@ def prediction_to_normalized_pil(pred_onehot):
     return out.sum(dim=1, keepdim=True)
 
 
-def prediction_to_png(pred, img_name, out_path='../rawdata/CHAOS_/val/Result'):
+def prediction_to_png(pred, img_name, out_path):
     batch_size = pred.size(0)
 
     pred_onehot = prediction_to_segmentation(pred)
@@ -57,7 +57,7 @@ def find_images(path, regex=".*"):
     return image_names
 
 
-def create_nii_from_images(img_names, out_path="../rawdata/CHAOS_/val/Volume/Pred/Subj_1"):
+def create_nii_from_images(img_names, out_path):
     vol_numpy = np.zeros((IMG_HEIGTH, IMG_WIDTH, len(img_names)))
     for i, file in enumerate(img_names):
         imagePIL = np.array(Image.open(file).convert('L'))
