@@ -28,10 +28,13 @@ def prediction_to_normalized_pil(pred_onehot):
 
 
 def prediction_to_png(pred, img_name, out_path='../rawdata/CHAOS_/val/Result'):
+    batch_size = pred.size(0)
+
     pred_onehot = prediction_to_segmentation(pred)
     normalized_pil = prediction_to_normalized_pil(pred_onehot)
 
-    torchvision.utils.save_image(normalized_pil.data, os.path.join(out_path, img_name[0]))
+    for i in range(batch_size):
+        torchvision.utils.save_image(normalized_pil[i].data, os.path.join(out_path, img_name[i]))
 
 
 def atoi(text):
@@ -73,3 +76,5 @@ def create_3d_volume(path, out_path):
     for subj in subj_no:
         img_names = find_images(path, subj)
         create_nii_from_images(img_names, out_path + "/" + subj)
+
+

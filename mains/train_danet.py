@@ -9,7 +9,6 @@ from architectures.DANet.utils.metrics import *
 import warnings
 from architectures.DANet.utils.utils import *
 
-
 warnings.filterwarnings("ignore")
 
 if __name__ == "__main__":
@@ -20,20 +19,29 @@ if __name__ == "__main__":
 
     val_chaos_dataset = ChaosDataset(mode="val", root_dir="../rawdata/CHAOS_", transform_input=transform,
                                      transform_mask=GrayToClass(), augment=None)
-    val_loader = DataLoader(val_chaos_dataset, batch_size=1, num_workers=0, shuffle=True)
+    val_loader = DataLoader(val_chaos_dataset, batch_size=16, num_workers=0, shuffle=True)
 
     net = MSDualGuided().cuda()
     loss_module = MSDualGuidedLoss()
-    optimizer = Adam(net.parameters(), lr=0.001, betas=(0.9, 0.99), amsgrad=False)
+    lr = 0.001
+    optimizer = Adam(net.parameters(), lr=lr, betas=(0.9, 0.99), amsgrad=False)
 
-    for i in range(150):
+
+    lossG = []
+    dsc = []
+    assd = []
+    vs = []
+
+    epochs = 150
+    best_dice_3d, BestEpoch = 0, 0
+    for i in range(epochs):
 
         # Training Loop
         with tqdm(total=len(train_loader), ascii=True) as training_bar:
-            training_bar.set_description(f'[Training] Epoch {i}')
+            training_bar.set_description(f'[Training] Epoch {i+1}')
 
             net.train()
-            loss_train = []
+            loss_train = 0
             for (image, mask, _) in train_loader:
                 image, mask = image.cuda(), mask.cuda()
                 semVector1, semVector2, fsms, fai, semModule1, semModule2, predict1, predict2 = net(image)
@@ -44,37 +52,63 @@ if __name__ == "__main__":
                 loss.backward()
                 optimizer.step()
 
-                loss_train.append(loss.cpu().data.numpy())
+                loss_train += loss.item()
 
                 segmentation_prediction = sum(list(predict1) + list(predict2)) / 8
                 classes_dice = dice_score(segmentation_prediction, mask)
 
                 training_bar.set_postfix_str(
                     "Mean dice: {:.3f} || Liver: {:.3f}, Kidney(R): {:.3f}, Kidney(L): {:.3f}, Spleen: {:.3f}"
-                    .format(torch.mean(classes_dice[1:]), classes_dice[1], classes_dice[2], classes_dice[3], classes_dice[4])
+                        .format(torch.mean(classes_dice[1:]), classes_dice[1], classes_dice[2], classes_dice[3],
+                                classes_dice[4])
                 )
                 training_bar.update()
 
-        # print("\nEpoch {}: loss -> {}\n".format(i + 1, np.mean(loss_train)))
+            training_bar.set_postfix_str("Mean loss: {:.4f}".format(loss_train / len(train_loader)))
+            del semVector1, semVector2, fsms, fai, semModule1, semModule2, predict1, predict2
 
         # Validation Loop
         with tqdm(total=len(val_loader), ascii=True) as val_bar:
             val_bar.set_description('[Validation]')
 
             net.eval()
-            dice_val = torch.zeros(len(val_loader), 5)
-            for i, (val_image, val_mask, val_img_name) in enumerate(val_loader):
+            for j, (val_image, val_mask, val_img_name) in enumerate(val_loader):
                 val_image, val_mask = val_image.cuda(), val_mask.cuda()
 
                 with torch.no_grad():
                     seg_pred = net(val_image)
-                    dice_val[i] = dice_score(seg_pred, val_mask)
-
                     prediction_to_png(seg_pred, val_img_name)
 
                 val_bar.update()
 
             create_3d_volume("../rawdata/CHAOS_/val/Result", "../rawdata/CHAOS_/val/Volume/Pred")
-            dice_3d = dice_score_3d("../rawdata/CHAOS_/val/Volume")
+            dsc_3d, assd_3d, vs_3d = calculate_3d_metrics("../rawdata/CHAOS_/val/Volume")
 
-        print(dice_val.mean(dim=0))
+            current_dice_3d = np.mean(dsc_3d)
+            if current_dice_3d > best_dice_3d:
+                best_dice_3d = current_dice_3d
+                BestEpoch = i
+                torch.save(net.state_dict(), "../rawdata/CHAOS_/save/net.pth")
+
+            if i % (BestEpoch + 50) == 0:
+                for param_group in optimizer.param_groups:
+                    lr = lr * 0.5
+                    param_group['lr'] = lr
+
+            dice_3d_class = np.mean(dsc_3d, 0)
+            val_bar.set_postfix_str(
+                "Dice 3D: {:.3f} || Liver: {:.3f}, Kidney(R): {:.3f}, Kidney(L): {:.3f}, Spleen: {:.3f}"
+                    .format(np.mean(dice_3d_class), dice_3d_class[0], dice_3d_class[1], dice_3d_class[2], dice_3d_class[3])
+            )
+
+            # Save Statistics
+            lossG.append(loss_train/len(train_loader))
+            dsc.append(dsc_3d)
+            assd.append(assd_3d)
+            vs.append(vs_3d)
+
+            np.save("../rawdata/CHAOS_/save/loss", lossG)
+            np.save("../rawdata/CHAOS_/save/dsc", dsc)
+            np.save("../rawdata/CHAOS_/save/assd", assd)
+            np.save("../rawdata/CHAOS_/save/vs", vs)
+
