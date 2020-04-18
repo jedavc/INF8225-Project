@@ -1,3 +1,7 @@
+import sys
+sys.path.append("../INF8225-Project/")
+
+
 from architectures.DANet.model.MSDualGuided import *
 from torch.utils.data import DataLoader
 from datasets.ChaosDataset import *
@@ -35,7 +39,7 @@ def run_training(args):
     assd = []
     vs = []
 
-    best_dice_3d, BestEpoch = 0, 0
+    best_dice_3d, best_epoch = 0, 0
     for i in range(args.epochs):
 
         # Training Loop
@@ -89,10 +93,10 @@ def run_training(args):
             current_dice_3d = np.mean(dsc_3d)
             if current_dice_3d > best_dice_3d:
                 best_dice_3d = current_dice_3d
-                BestEpoch = i
+                best_epoch = i
                 torch.save(net.state_dict(), args.root_dir + "/save/net.pth")
 
-            if i % (BestEpoch + 50) == 0:
+            if i % (best_epoch + 50) == 0:
                 for param_group in optimizer.param_groups:
                     lr = lr * 0.5
                     param_group['lr'] = lr
@@ -118,8 +122,8 @@ def run_training(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', default='../rawdata/CHAOS_Train_Sets/Train_Sets/MR', type=str)
-    parser.add_argument('--root_dir', default='../rawdata/chaos-test', type=str)
+    parser.add_argument('--data_dir', default='./rawdata/CHAOS_Train_Sets/Train_Sets/MR', type=str)
+    parser.add_argument('--root_dir', default='./rawdata/chaos-test', type=str)
     parser.add_argument('--num_workers', default=0, type=int)
     parser.add_argument('--batch_size', default=2, type=int)
     parser.add_argument('--epochs', default=150, type=int)
