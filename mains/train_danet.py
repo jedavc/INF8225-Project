@@ -1,6 +1,6 @@
 import sys
-sys.path.append("../INF8225-Project/")
 
+sys.path.append("../INF8225-Project/")
 
 from architectures.DANet.model.MSDualGuided import *
 from torch.utils.data import DataLoader
@@ -22,7 +22,8 @@ def run_training(args):
     transform = transforms.Compose([transforms.ToTensor()])
     train_chaos_dataset = ChaosDataset(mode="train", root_dir=args.root_dir, transform_input=transform,
                                        transform_mask=GrayToClass(), augment=Augment())
-    train_loader = DataLoader(train_chaos_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
+    train_loader = DataLoader(train_chaos_dataset, batch_size=args.batch_size, num_workers=args.num_workers,
+                              shuffle=True)
 
     val_chaos_dataset = ChaosDataset(mode="val", root_dir=args.root_dir, transform_input=transform,
                                      transform_mask=GrayToClass(), augment=None)
@@ -120,15 +121,53 @@ def run_training(args):
             np.save(args.root_dir + "/save/vs", vs)
 
 
+def run_eval(args):
+    transform = transforms.Compose([transforms.ToTensor()])
+    test_chaos_dataset = ChaosDataset(mode="test", root_dir=args.root_dir, transform_input=transform,
+                                      transform_mask=GrayToClass(), augment=None)
+    test_loader = DataLoader(test_chaos_dataset, batch_size=16, num_workers=args.num_workers, shuffle=False)
+
+    net = MSDualGuided().cuda()
+    net.load_state_dict(torch.load(args.checkpoint_path))
+    net.eval()
+
+    with tqdm(total=len(test_loader), ascii=True, position=0) as test_bar:
+        test_bar.set_description('[Evaluation]')
+
+        for test_image, test_mask, test_img_name in test_loader:
+            test_image, test_mask = test_image.cuda(), test_mask.cuda()
+
+            with torch.no_grad():
+                seg_pred = net(test_image)
+                prediction_to_png(seg_pred, test_img_name, out_path=args.root_dir + "/test/Result")
+
+            test_bar.update()
+
+        create_3d_volume(args.root_dir + "/test/Result", args.root_dir + "/test/Volume/Pred")
+        dsc_3d, assd_3d, vs_3d = calculate_3d_metrics(args.root_dir + "/test/Volume")
+
+        test_bar.set_postfix_str(
+            "Dice 3D: {:.3f} | ASSD: {:.3f} | VS: {:.3f}"
+                .format(np.mean(dsc_3d), np.mean(assd_3d), np.mean(vs_3d))
+        )
+
+        np.save(args.root_dir + "/save/dsc_test", dsc_3d)
+        np.save(args.root_dir + "/save/assd_test", assd_3d)
+        np.save(args.root_dir + "/save/vs_test", vs_3d)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', default='./rawdata/CHAOS_Train_Sets/Train_Sets/MR', type=str)
-    parser.add_argument('--root_dir', default='./rawdata/chaos-test', type=str)
+    parser.add_argument('--root_dir', default='./rawdata/chaos', type=str)
     parser.add_argument('--num_workers', default=0, type=int)
     parser.add_argument('--batch_size', default=2, type=int)
     parser.add_argument('--epochs', default=150, type=int)
     parser.add_argument('--lr', default=0.001, type=float)
     parser.add_argument('--create_hierarchy', default=False, action='store_true')
+    parser.add_argument('--train', default=False, action='store_true')
+    parser.add_argument('--eval', default=False, action='store_true')
+    parser.add_argument('--checkpoint_path', default='./rawdata/chaos/save/net.pth', type=str)
     args = parser.parse_args()
 
     if args.create_hierarchy:
@@ -136,5 +175,8 @@ if __name__ == "__main__":
         shutil.rmtree(args.root_dir, ignore_errors=True)
         create_hierarchy(data_dir=args.data_dir, out_dir=args.root_dir)
 
-    run_training(args)
+    if args.train:
+        run_training(args)
 
+    if args.eval:
+        run_eval(args)
