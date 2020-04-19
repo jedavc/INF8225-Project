@@ -4,8 +4,8 @@ from math import sqrt
 class ConvolutionalPart(nn.Module):
     def __init__(self, in_dim, out_dim, kernel_size):
         super(ConvolutionalPart, self).__init__()
-        pad0 = (kernel_size[0] - 1) / 2
-        pad1 = (kernel_size[1] - 1) / 2
+        pad0 = (kernel_size[0] - 1) // 2
+        pad1 = (kernel_size[1] - 1) // 2
 
         self.conv_l1 = nn.Conv2d(in_dim, out_dim, kernel_size=(kernel_size[0], 1),
                                  padding=(pad0, 0))
