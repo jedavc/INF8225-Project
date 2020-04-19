@@ -70,10 +70,10 @@ class ChaosDataset(Dataset):
 class GrayToClass(object):
 
     def __init__(self):
-        self.class1 = 63
-        self.class2 = 126
-        self.class3 = 189
-        self.class4 = 252
+        self.class1 = 63    # Liver
+        self.class2 = 126   # Kidney (R)
+        self.class3 = 189   # Kidney (L)
+        self.class4 = 252   # Spleen
 
     def __call__(self, mask):
         numpy_image = np.array(mask)

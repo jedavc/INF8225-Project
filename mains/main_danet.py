@@ -158,8 +158,9 @@ def run_eval(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', default='./rawdata/CHAOS_Train_Sets/Train_Sets/MR', type=str)
-    parser.add_argument('--root_dir', default='./rawdata/chaos', type=str)
+
+    parser.add_argument('--data_dir', default='../rawdata/CHAOS_Train_Sets/Train_Sets/MR', type=str)
+    parser.add_argument('--root_dir', default='../rawdata/chaos', type=str)
     parser.add_argument('--num_workers', default=0, type=int)
     parser.add_argument('--batch_size', default=2, type=int)
     parser.add_argument('--epochs', default=150, type=int)
@@ -167,7 +168,8 @@ if __name__ == "__main__":
     parser.add_argument('--create_hierarchy', default=False, action='store_true')
     parser.add_argument('--train', default=False, action='store_true')
     parser.add_argument('--eval', default=False, action='store_true')
-    parser.add_argument('--checkpoint_path', default='./rawdata/chaos/save/net.pth', type=str)
+    parser.add_argument('--checkpoint_path', default='../rawdata/chaos/save/net.pth', type=str)
+
     args = parser.parse_args()
 
     if args.create_hierarchy:
