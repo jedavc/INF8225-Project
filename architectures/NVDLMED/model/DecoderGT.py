@@ -18,8 +18,10 @@ class DecoderGT(nn.Module):
         self.third_upsample3d = UpsampleBlock(out_up_2_channels, out_up_3_channels)
         self.third_resnetblock = ResNetBlock(in_channel=out_up_3_channels)
 
-        # TODO article 3.2 --> Sigmoid
-        self.output_gt = nn.Conv3d(in_channels=32, out_channels=output_channels, kernel_size=(3, 3, 3), stride=1, padding=1)
+        self.output_gt = nn.Sequential(
+            nn.Conv3d(in_channels=32, out_channels=output_channels, kernel_size=(3, 3, 3), stride=1, padding=1),
+            nn.Sigmoid()
+        )
 
     def forward(self, x1, x2, x3, x4):
         # First Decoder ResNetBlock (output filters = 128)
