@@ -3,33 +3,40 @@ from architectures.NVDLMED.model.ResNetBlock import *
 
 
 class Encoder(nn.Module):
-    def __init__(self, input_shape=(4, 160, 192, 128)):
+    def __init__(self, in_channels, start_channels=32):
         super(Encoder, self).__init__()
 
-        self.input_shape = input_shape
+        self.start_channels = start_channels
+        self.down_channels_1 = 2 * self.start_channels
+        self.down_channels_2 = 2 * self.down_channels_1
+        self.down_channels_3 = 2 * self.down_channels_2
 
-        self.initial_block = nn.Sequential(nn.Conv3d(in_channels=self.input_shape[0], out_channels=32, kernel_size=(3, 3, 3), stride=1, padding=1),
-                                           nn.Dropout3d(p=0.2))
+        self.blue_block = nn.Sequential(
+            nn.Conv3d(in_channels=in_channels, out_channels=self.start_channels, kernel_size=(3, 3, 3), stride=1, padding=1),
+            nn.Dropout3d(p=0.2))
 
-        self.first_encoder = ResNetBlock(in_channel=32, out_channel=32)
+        self.first_encoder = ResNetBlock(in_channel=self.start_channels)
 
-        self.second_encoder = nn.Sequential(nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=2, padding=1),
-                                            ResNetBlock(in_channel=32, out_channel=64),
-                                            ResNetBlock(in_channel=64, out_channel=64))
+        self.second_encoder = nn.Sequential(
+            nn.Conv3d(in_channels=self.start_channels, out_channels=self.down_channels_1, kernel_size=(3, 3, 3), stride=2, padding=1),
+            ResNetBlock(in_channel=self.down_channels_1),
+            ResNetBlock(in_channel=self.down_channels_1))
 
-        self.third_encoder = nn.Sequential(nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=2, padding=1),
-                                           ResNetBlock(in_channel=64, out_channel=128),
-                                           ResNetBlock(in_channel=128, out_channel=128))
+        self.third_encoder = nn.Sequential(
+            nn.Conv3d(in_channels=self.down_channels_1, out_channels=self.down_channels_2, kernel_size=(3, 3, 3), stride=2, padding=1),
+            ResNetBlock(in_channel=self.down_channels_2),
+            ResNetBlock(in_channel=self.down_channels_2))
 
-        self.fourth_encoder = nn.Sequential(nn.Conv3d(in_channels=128, out_channels=128, kernel_size=(3, 3, 3), stride=2, padding=1),
-                                            ResNetBlock(in_channel=128, out_channel=256),
-                                            ResNetBlock(in_channel=256, out_channel=256),
-                                            ResNetBlock(in_channel=256, out_channel=256),
-                                            ResNetBlock(in_channel=256, out_channel=256))
+        self.fourth_encoder = nn.Sequential(
+            nn.Conv3d(in_channels=self.down_channels_2, out_channels=self.down_channels_3, kernel_size=(3, 3, 3), stride=2, padding=1),
+            ResNetBlock(in_channel=self.down_channels_3),
+            ResNetBlock(in_channel=self.down_channels_3),
+            ResNetBlock(in_channel=self.down_channels_3),
+            ResNetBlock(in_channel=self.down_channels_3))
 
     def forward(self, x):
         # Initial Block
-        x = self.initial_block(x)
+        x = self.blue_block(x)
 
         # First Encoder ResNetBlock (output filters = 32)
         x1 = self.first_encoder(x)

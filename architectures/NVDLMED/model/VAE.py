@@ -1,5 +1,6 @@
 from torch import nn
 from architectures.NVDLMED.model.ResNetBlock import *
+from architectures.NVDLMED.model.DecoderGT import UpsampleBlock
 from torch.distributions.normal import Normal
 
 
@@ -9,40 +10,41 @@ class VAE(nn.Module):
         self.input_shape = input_shape
         self.output_channels = output_channels
 
-        self.vd_block = nn.Sequential(nn.GroupNorm(8, 256),
-                                      nn.ReLU(),
-                                      nn.Conv3d(in_channels=256, out_channels=16, kernel_size=(3, 3, 3), stride=2, padding=1),
-                                      Flatten(),
-                                      nn.Linear(3360, 256))
+        self.vd_block = nn.Sequential(
+            nn.GroupNorm(8, 256),
+            nn.ReLU(),
+            nn.Conv3d(in_channels=256, out_channels=16, kernel_size=(3, 3, 3), stride=2, padding=1),
+            Flatten(),
+            nn.Linear(1920, 256))
 
-        self.vddraw_block = SamplingBlock(input_shape=256, output_shape=128)
+        self.vddraw_block = SamplingBlock(input_shape=256)
 
-        self.vu_block = nn.Sequential(nn.Linear(128, (input_shape[0]//4) * (input_shape[1]//16) * (input_shape[2]//16) * (input_shape[3]//16)),
-                                      nn.ReLU(),
-                                      View((-1, input_shape[0]//4, input_shape[1]//16, input_shape[2]//16, input_shape[3]//16)),
-                                      nn.Conv3d(in_channels=input_shape[0]//4, out_channels=256, kernel_size=(1, 1, 1), stride=1),
-                                      nn.Upsample(scale_factor=2, mode='trilinear'))
+        self.vu_block = nn.Sequential(
+            nn.Linear(128, (input_shape[0]//4) * (input_shape[1]//16) * (input_shape[2]//16) * (input_shape[3]//16)),
+            nn.ReLU(),
+            View((-1, input_shape[0]//4, input_shape[1]//16, input_shape[2]//16, input_shape[3]//16)),
+            UpsampleBlock(in_channels=input_shape[0]//4, out_channels=256))
 
-        self.vup_resnet_block2 = nn.Sequential(nn.Conv3d(in_channels=256, out_channels=128, kernel_size=(1, 1, 1), stride=1),
-                                              nn.Upsample(scale_factor=2, mode='trilinear'),
-                                              ResNetBlock(in_channel=128, out_channel=128))
+        self.vup_resnet_block2 = nn.Sequential(
+            UpsampleBlock(in_channels=256, out_channels=128),
+            ResNetBlock(in_channel=128))
 
-        self.vup_resnet_block1 = nn.Sequential(nn.Conv3d(in_channels=128, out_channels=64, kernel_size=(1, 1, 1), stride=1),
-                                               nn.Upsample(scale_factor=2, mode='trilinear'),
-                                               ResNetBlock(in_channel=64, out_channel=64))
+        self.vup_resnet_block1 = nn.Sequential(
+            UpsampleBlock(in_channels=128, out_channels=64),
+            ResNetBlock(in_channel=64))
 
-        self.vup_resnet_block0 = nn.Sequential(nn.Conv3d(in_channels=64, out_channels=32, kernel_size=(1, 1, 1), stride=1),
-                                               nn.Upsample(scale_factor=2, mode='trilinear'),
-                                               ResNetBlock(in_channel=32, out_channel=32))
+        self.vup_resnet_block0 = nn.Sequential(
+            UpsampleBlock(in_channels=64, out_channels=32),
+            ResNetBlock(in_channel=32))
 
-        self.output_vae = nn.Sequential(nn.Conv3d(in_channels=32, out_channels=self.output_channels, kernel_size=(1, 1, 1), stride=1))
+        self.output_vae = nn.Conv3d(in_channels=32, out_channels=self.output_channels, kernel_size=(1, 1, 1), stride=1)
 
     def forward(self, x):
         # VD Block (Reducing dimensionality of the data)
         x = self.vd_block(x)
 
         # Sampling BLock
-        x = self.vddraw_block(x)
+        x, mu, logvar = self.vddraw_block(x)
 
         # VU BLock (Upsizing back to a depth of 256)
         x = self.vu_block(x)
@@ -59,7 +61,7 @@ class VAE(nn.Module):
         # Output Block
         out_vae = self.output_vae(x)
 
-        return out_vae
+        return out_vae, mu, logvar
 
 
 class Flatten(nn.Module):
@@ -80,25 +82,21 @@ class View(nn.Module):
 
 
 class SamplingBlock(nn.Module):
-    def __init__(self, input_shape=256, output_shape=128):
+    def __init__(self, input_shape=256):
         super(SamplingBlock, self).__init__()
 
         self.input_shape = input_shape
-        self.output_shape = output_shape
 
-        self.dense_mean = nn.Linear(256, self.output_shape)
-        self.dense_var = nn.Linear(256, self.output_shape)
-
-    def sampling(self, z_mean, z_var):
-        batch, dim = z_mean.size()
-        epsilon = torch.randn(size=(batch, dim)).cuda()
+    @staticmethod
+    def sampling(z_mean, z_var):
+        epsilon = torch.rand_like(z_mean).cuda()
 
         return z_mean + torch.exp(0.5 * z_var) * epsilon
 
     def forward(self, x):
-        # VDraw Block (Sampling)
-        z_mean = self.dense_mean(x)
-        z_var = self.dense_mean(x)
+        z_mean = x[:, :(self.input_shape // 2)]
+        z_var = x[:, (self.input_shape // 2):]
+
         out = self.sampling(z_mean, z_var)
 
-        return out
+        return out, z_mean, z_var
