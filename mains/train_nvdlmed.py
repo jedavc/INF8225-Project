@@ -47,16 +47,17 @@ def run_training(args):
     lambda1 = lambda epoch: (1 - epoch / args.epochs) ** 0.9
     scheduler = LambdaLR(optimizer, lr_lambda=lambda1)
 
-    lossG = []
-    dsc = []
-    hd = []
+    loss_train = []
+    dsc_train, dsc_val = [], []
+    hd_train, hd_val = [], []
 
     best_dice_3d, best_epoch = 0, 0
     for epoch in range(args.epochs):
 
         # Training loop
         model.train()
-        loss_train = 0
+        loss_train_batch = 0
+        dsc_train_batch, hd_train_batch = [], []
         with tqdm(total=len(train_loader), ascii=True) as training_bar:
             training_bar.set_description(f'[Training] Epoch {epoch + 1}')
 
@@ -70,17 +71,21 @@ def run_training(args):
                 loss.backward()
                 optimizer.step()
 
-                loss_train += loss.item()
+                loss_train_batch += loss.item()
+                dsc_3d, hd_3d = calculate_3d_metrics(output_gt, target)
+                dsc_train_batch.extend(dsc_3d)
+                hd_train_batch.extend(hd_3d)
+
                 training_bar.set_postfix_str(
                     "Loss: {:.3f} | Dice loss: {:.3f}, L2 loss: {:.3f}, KL loss {:.3f}"
                         .format(loss.item(), l_dice.item(), l_l2.item(), l_kl.item()))
                 training_bar.update()
 
-            training_bar.set_postfix_str("Mean loss: {:.4f}".format(loss_train / len(train_loader)))
+            training_bar.set_postfix_str("Mean loss: {:.4f}".format(loss_train_batch / len(train_loader)))
 
         # Validation loop
         model.eval()
-        dsc_valid, hd_valid = [], []
+        dsc_val_batch, hd_val_batch = [], []
         with tqdm(total=len(valid_loader), ascii=True) as val_bar:
             val_bar.set_description('[Validation]')
 
@@ -91,17 +96,17 @@ def run_training(args):
                     output_gt = model(input)
 
                     dsc_3d, hd_3d = calculate_3d_metrics(output_gt, target)
-                    dsc_valid.extend(dsc_3d)
-                    hd_valid.extend(hd_3d)
+                    dsc_val_batch.extend(dsc_3d)
+                    hd_val_batch.extend(hd_3d)
 
                 val_bar.update()
 
             val_bar.set_postfix_str(
                 "Dice 3D: {:.3f} || ET: {:.3f}, WT: {:.3f}, TC: {:.3f}"
-                    .format(np.mean(dsc_valid), np.mean(dsc_valid, 0)[0], np.mean(dsc_valid, 0)[1], np.mean(dsc_valid, 0)[2])
+                    .format(np.mean(dsc_val_batch), np.mean(dsc_val_batch, 0)[0], np.mean(dsc_val_batch, 0)[1], np.mean(dsc_val_batch, 0)[2])
             )
 
-        current_dice_3d = np.mean(dsc_valid)
+        current_dice_3d = np.mean(dsc_val_batch)
         if current_dice_3d > best_dice_3d:
             best_dice_3d = current_dice_3d
             torch.save(model.state_dict(), args.root_dir + "/save/net.pth")
@@ -109,13 +114,17 @@ def run_training(args):
         scheduler.step()
 
         # Save Statistics
-        lossG.append(loss_train / len(train_loader))
-        dsc.append(dsc_valid)
-        hd.append(hd_valid)
+        loss_train.append(loss_train_batch / len(train_loader))
+        dsc_train.append(dsc_train_batch)
+        hd_train.append(hd_train_batch)
+        dsc_val.append(dsc_val_batch)
+        hd_val.append(hd_val_batch)
 
-        np.save(args.root_dir + "/save/loss", lossG)
-        np.save(args.root_dir + "/save/dsc", dsc)
-        np.save(args.root_dir + "/save/assd", hd)
+        np.save(args.root_dir + "/save/loss", loss_train)
+        np.save(args.root_dir + "/save/dsc_train", dsc_train)
+        np.save(args.root_dir + "/save/hd_train", hd_train)
+        np.save(args.root_dir + "/save/dsc_val", dsc_val)
+        np.save(args.root_dir + "/save/hd_val", hd_val)
 
 
 if __name__ == "__main__":

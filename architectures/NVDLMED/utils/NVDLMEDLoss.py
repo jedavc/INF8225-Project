@@ -11,9 +11,9 @@ class NVDLMEDLoss(nn.Module):
     def forward(self, output_gt, gt, output_vae, input, mu, var):
         l_dice = loss_dice(output_gt, gt)
         l_l2 = self.loss_l2(output_vae, input)
-        l_kl = loss_kl(mu, var, input[0].size())
+        l_kl = loss_kl(mu, var)
 
-        return l_dice + 0.1 * l_l2 + 0.1 * l_kl, l_dice, l_l2, l_kl
+        return l_dice + 0.05 * l_l2 + 0.1 * l_kl, l_dice, l_l2, l_kl
 
 
 def loss_dice(pred, gt, epsilon=1e-6):
@@ -28,7 +28,7 @@ def loss_dice(pred, gt, epsilon=1e-6):
     return (1. - torch.mean(per_channel_dice))
 
 
-def loss_kl(z_mean, z_var, input_shape):
+def loss_kl(z_mean, z_var):
 
     return torch.sum(z_var.exp() + z_mean.pow(2) - 1. - z_var)
 
