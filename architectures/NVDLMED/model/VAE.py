@@ -5,25 +5,26 @@ from torch.distributions.normal import Normal
 
 
 class VAE(nn.Module):
-    def __init__(self, input_shape=(2, 160, 192, 128), output_channels=4):
+    def __init__(self, input_shape=(256, 20, 24, 16), output_channels=4, vd_out_channels=16, vae_vector_dim=256):
         super(VAE, self).__init__()
-        self.input_shape = input_shape
-        self.output_channels = output_channels
+
+        # Linear reduction dimensions
+        linear_reduc_dim = int(vd_out_channels * (input_shape[1] // 2) * (input_shape[2] // 2) * (input_shape[3] // 2))
 
         self.vd_block = nn.Sequential(
             nn.GroupNorm(8, 256),
             nn.ReLU(),
-            nn.Conv3d(in_channels=256, out_channels=16, kernel_size=(3, 3, 3), stride=2, padding=1),
+            nn.Conv3d(in_channels=input_shape[0], out_channels=vd_out_channels, kernel_size=(3, 3, 3), stride=2, padding=1),
             Flatten(),
-            nn.Linear(1920, 256))
+            nn.Linear(linear_reduc_dim, vae_vector_dim))
 
-        self.vddraw_block = SamplingBlock(input_shape=256)
+        self.vddraw_block = SamplingBlock(input_shape=vae_vector_dim)
 
         self.vu_block = nn.Sequential(
-            nn.Linear(128, (input_shape[0]//4) * (input_shape[1]//16) * (input_shape[2]//16) * (input_shape[3]//16)),
+            nn.Linear(128, linear_reduc_dim),
             nn.ReLU(),
-            View((-1, input_shape[0]//4, input_shape[1]//16, input_shape[2]//16, input_shape[3]//16)),
-            UpsampleBlock(in_channels=input_shape[0]//4, out_channels=256))
+            View((-1, vd_out_channels, input_shape[1] // 2, input_shape[2] // 2, input_shape[3] // 2)),
+            UpsampleBlock(in_channels=16, out_channels=256))
 
         self.vup_resnet_block2 = nn.Sequential(
             UpsampleBlock(in_channels=256, out_channels=128),
@@ -37,7 +38,7 @@ class VAE(nn.Module):
             UpsampleBlock(in_channels=64, out_channels=32),
             ResNetBlock(in_channel=32))
 
-        self.output_vae = nn.Conv3d(in_channels=32, out_channels=self.output_channels, kernel_size=(1, 1, 1), stride=1)
+        self.output_vae = nn.Conv3d(in_channels=32, out_channels=output_channels, kernel_size=(1, 1, 1), stride=1)
 
     def forward(self, x):
         # VD Block (Reducing dimensionality of the data)
@@ -100,3 +101,10 @@ class SamplingBlock(nn.Module):
         out = self.sampling(z_mean, z_var)
 
         return out, z_mean, z_var
+
+
+vae = VAE(input_shape=(256,20,24,16)).cuda()
+
+test= torch.randn((1, 256,20,24,16)).cuda()
+with torch.no_grad():
+    vae(test)

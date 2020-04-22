@@ -1,5 +1,6 @@
 from torch import nn
 import torch
+import torch.nn.functional as F
 
 
 class NVDLMEDLoss(nn.Module):
@@ -29,7 +30,7 @@ def loss_dice(pred, gt, epsilon=1e-6):
 
 def loss_kl(z_mean, z_var, input_shape):
 
-    return 0.5 * torch.sum(z_var.exp() + z_mean.pow(2) - 1. - z_var)
+    return torch.sum(z_var.exp() + z_mean.pow(2) - 1. - z_var)
 
 
 def flatten(tensor):
