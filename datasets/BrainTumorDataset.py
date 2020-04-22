@@ -12,7 +12,6 @@ class BrainTumorDataset(Dataset):
     def __init__(self,
                  training_path="../rawdata/MICCAI_BraTS_2018_Data_Training/",
                  desired_resolution=(80, 96, 64),
-                 number_modality=4,
                  original_resolution=(155, 240, 240),
                  output_channels=3,
                  transform_input=None,
@@ -25,7 +24,6 @@ class BrainTumorDataset(Dataset):
                                "seg": glob.glob(training_path + '*GG/*/*seg.nii.gz')}
 
         self.desired_resolution = desired_resolution
-        self.number_modality=number_modality
         self.original_resolution = original_resolution
         self.output_channels = output_channels
         self.transform_input = transform_input
@@ -49,7 +47,7 @@ class BrainTumorDataset(Dataset):
         data_files = self.files[idx]
         numpy_data = np.array([sitk.GetArrayFromImage(sitk.ReadImage(file))
                                for file in data_files.values()], dtype=np.float32)
-        input = self.transform_input(numpy_data[0:self.number_modality])
+        input = self.transform_input(numpy_data)
         gt = self.transform_gt(numpy_data[-1])
 
         return torch.from_numpy(input), torch.from_numpy(gt)

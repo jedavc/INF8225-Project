@@ -5,18 +5,18 @@ class DecoderGT(nn.Module):
     def __init__(self, in_channels=256, output_channels=3):
         super(DecoderGT, self).__init__()
 
-        out_up_1_channels = int(in_channels / 2)
-        out_up_2_channels = int(out_up_1_channels / 2)
-        out_up_3_channels = int(out_up_2_channels / 2)
+        self.out_up_1_channels = in_channels // 2
+        self.out_up_2_channels = self.out_up_1_channels // 2
+        self.out_up_3_channels = self.out_up_2_channels // 2
 
-        self.first_upsample3d = UpsampleBlock(in_channels, out_up_1_channels)
-        self.first_resnetblock = ResNetBlock(in_channel=out_up_1_channels)
+        self.first_upsample3d = UpsampleBlock(in_channels, self.out_up_1_channels)
+        self.first_resnetblock = ResNetBlock(in_channel=self.out_up_1_channels)
 
-        self.second_upsample3d = UpsampleBlock(out_up_1_channels, out_up_2_channels)
-        self.second_resnetblock = ResNetBlock(in_channel=out_up_2_channels)
+        self.second_upsample3d = UpsampleBlock(self.out_up_1_channels, self.out_up_2_channels)
+        self.second_resnetblock = ResNetBlock(in_channel=self.out_up_2_channels)
 
-        self.third_upsample3d = UpsampleBlock(out_up_2_channels, out_up_3_channels)
-        self.third_resnetblock = ResNetBlock(in_channel=out_up_3_channels)
+        self.third_upsample3d = UpsampleBlock(self.out_up_2_channels, self.out_up_3_channels)
+        self.third_resnetblock = ResNetBlock(in_channel=self.out_up_3_channels)
 
         self.output_gt = nn.Sequential(
             nn.Conv3d(in_channels=32, out_channels=output_channels, kernel_size=(3, 3, 3), stride=1, padding=1),

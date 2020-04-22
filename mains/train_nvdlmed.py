@@ -8,18 +8,20 @@ from architectures.NVDLMED.utils.NVDLMEDLoss import *
 from tqdm import tqdm
 from architectures.NVDLMED.utils.metrics import *
 import warnings
-
+import argparse
+import shutil
+from architectures.NVDLMED.utils.HierarchyCreator import create_hierarchy
 
 warnings.filterwarnings("ignore")
 
-if __name__ == "__main__":
+
+def run_training(args):
     desired_resolution = (80, 96, 64)
     factor = (desired_resolution[0] / 155, desired_resolution[1] / 240, desired_resolution[2] / 240)
 
     brain_tumor_dataset = BrainTumorDataset(
         training_path="../rawdata/MICCAI_BraTS_2018_Data_Training/",
         desired_resolution=desired_resolution,
-        number_modality=4,
         original_resolution=(155, 240, 240),
         output_channels=3,
         transform_input=transforms.Compose([Resize(factor), Normalize()]),
@@ -29,21 +31,24 @@ if __name__ == "__main__":
     train_dataset, valid_dataset = random_split(
         brain_tumor_dataset,
         [training_exemples, len(brain_tumor_dataset) - training_exemples])
-    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, num_workers=8)
-    valid_loader = DataLoader(valid_dataset, batch_size=2, shuffle=True, num_workers=10)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+    valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
 
     model = NVDLMED(input_shape=(4,) + desired_resolution)
     model.cuda()
 
     NVDLMED_loss = NVDLMEDLoss()
-    optimizer = Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
+    optimizer = Adam(model.parameters(), lr=args.lr, weight_decay=1e-5)
 
-    epochs = 150
-    lambda1 = lambda epoch: (1 - epoch / epochs) ** 0.9
+    lambda1 = lambda epoch: (1 - epoch / args.epochs) ** 0.9
     scheduler = LambdaLR(optimizer, lr_lambda=lambda1)
 
-    loss_train = []
-    for epoch in range(epochs):
+    lossG = []
+    dsc = []
+    hd = []
+
+    best_dice_3d, best_epoch = 0, 0
+    for epoch in range(args.epochs):
 
         # Training loop
         model.train()
@@ -92,4 +97,45 @@ if __name__ == "__main__":
                     .format(np.mean(dsc_valid), np.mean(dsc_valid, 0)[0], np.mean(dsc_valid, 0)[1], np.mean(dsc_valid, 0)[2])
             )
 
+        current_dice_3d = np.mean(dsc_valid)
+        if current_dice_3d > best_dice_3d:
+            best_dice_3d = current_dice_3d
+            torch.save(model.state_dict(), args.root_dir + "/save/net.pth")
+
         scheduler.step()
+
+        # Save Statistics
+        lossG.append(loss_train / len(train_loader))
+        dsc.append(dsc_valid)
+        hd.append(hd_valid)
+
+        np.save(args.root_dir + "/save/loss", lossG)
+        np.save(args.root_dir + "/save/dsc", dsc)
+        np.save(args.root_dir + "/save/assd", hd)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--root_dir', default='../rawdata/brats', type=str)
+    parser.add_argument('--num_workers', default=0, type=int)
+    parser.add_argument('--batch_size', default=1, type=int)
+    parser.add_argument('--epochs', default=150, type=int)
+    parser.add_argument('--lr', default=1e-4, type=float)
+    parser.add_argument('--train', default=False, action='store_true')
+    parser.add_argument('--eval', default=False, action='store_true')
+    parser.add_argument('--create_hierarchy', default=False, action='store_true')
+    parser.add_argument('--checkpoint_path', default='../rawdata/brats/save/net.pth', type=str)
+
+    args = parser.parse_args()
+
+    if args.create_hierarchy:
+        print("Creating folders for the model!\n")
+        shutil.rmtree(args.root_dir, ignore_errors=True)
+        create_hierarchy(data_dir=args.data_dir, out_dir=args.root_dir)
+
+    if args.train:
+        run_training(args)
+
+    # if args.eval:
+    #     run_eval(args)
