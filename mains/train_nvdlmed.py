@@ -1,3 +1,7 @@
+import sys
+
+sys.path.append("../INF8225-Project/")
+
 from architectures.NVDLMED.model.NVDLMED import *
 from datasets.BrainTumorDataset import *
 from torch.utils.data import DataLoader, random_split
@@ -11,38 +15,39 @@ import warnings
 import argparse
 import shutil
 from architectures.NVDLMED.utils.HierarchyCreator import create_hierarchy
+from architectures.NVDLMED.utils.constant import *
 
 warnings.filterwarnings("ignore")
 
 
 def run_training(args):
-    desired_resolution = (80, 96, 64)
-    factor = (desired_resolution[0] / 155, desired_resolution[1] / 240, desired_resolution[2] / 240)
+    desired_resolution = (args.desired_resolution_h, args.desired_resolution_w, args.desired_resolution_d)
+    factor = (desired_resolution[0] / ORIGINAL_RES_H, desired_resolution[1] / ORIGINAL_RES_W, desired_resolution[2] / ORIGINAL_RES_D)
 
     train_dataset = BrainTumorDataset(
         mode="train",
-        data_path="../rawdata/brats/",
+        data_path=args.root_dir,
         desired_resolution=desired_resolution,
-        original_resolution=(155, 240, 240),
+        original_resolution=(ORIGINAL_RES_H, ORIGINAL_RES_W, ORIGINAL_RES_D),
         transform_input=transforms.Compose([Resize(factor), Normalize()]),
         transform_gt=transforms.Compose([Labelize(), Resize(factor, mode="nearest")]))
 
     val_dataset = BrainTumorDataset(
         mode="val",
-        data_path="../rawdata/brats/",
+        data_path=args.root_dir,
         desired_resolution=desired_resolution,
-        original_resolution=(155, 240, 240),
+        original_resolution=(ORIGINAL_RES_H, ORIGINAL_RES_W, ORIGINAL_RES_D),
         transform_input=transforms.Compose([Resize(factor), Normalize()]),
         transform_gt=transforms.Compose([Labelize(), Resize(factor, mode="nearest")]))
 
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     valid_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
 
-    model = NVDLMED(input_shape=(4,) + desired_resolution)
-    model.cuda()
+    net = NVDLMED(input_shape=(4,) + desired_resolution)
+    net.cuda()
 
     NVDLMED_loss = NVDLMEDLoss()
-    optimizer = Adam(model.parameters(), lr=args.lr, weight_decay=1e-5)
+    optimizer = Adam(net.parameters(), lr=args.lr, weight_decay=1e-5)
 
     lambda1 = lambda epoch: (1 - epoch / args.epochs) ** 0.9
     scheduler = LambdaLR(optimizer, lr_lambda=lambda1)
@@ -55,7 +60,7 @@ def run_training(args):
     for epoch in range(args.epochs):
 
         # Training loop
-        model.train()
+        net.train()
         loss_train_batch = 0
         dsc_train_batch, hd_train_batch = [], []
         with tqdm(total=len(train_loader), ascii=True) as training_bar:
@@ -65,7 +70,7 @@ def run_training(args):
                 input, target = input.cuda(), target.cuda()
 
                 optimizer.zero_grad()
-                output_gt, output_vae, mu, logvar = model(input)
+                output_gt, output_vae, mu, logvar = net(input)
                 loss, l_dice, l_l2, l_kl = NVDLMED_loss(output_gt, target, output_vae, input, mu, logvar)
 
                 loss.backward()
@@ -84,7 +89,7 @@ def run_training(args):
             training_bar.set_postfix_str("Mean loss: {:.4f}".format(loss_train_batch / len(train_loader)))
 
         # Validation loop
-        model.eval()
+        net.eval()
         dsc_val_batch, hd_val_batch = [], []
         with tqdm(total=len(valid_loader), ascii=True) as val_bar:
             val_bar.set_description('[Validation]')
@@ -93,7 +98,7 @@ def run_training(args):
                 input, target = input.cuda(), target.cuda()
 
                 with torch.no_grad():
-                    output_gt = model(input)
+                    output_gt = net(input)
 
                     dsc_3d, hd_3d = calculate_3d_metrics(output_gt, target)
                     dsc_val_batch.extend(dsc_3d)
@@ -109,7 +114,7 @@ def run_training(args):
         current_dice_3d = np.mean(dsc_val_batch)
         if current_dice_3d > best_dice_3d:
             best_dice_3d = current_dice_3d
-            torch.save(model.state_dict(), args.root_dir + "/save/net.pth")
+            torch.save(net.state_dict(), args.root_dir + "/save/net.pth")
 
         scheduler.step()
 
@@ -127,12 +132,58 @@ def run_training(args):
         np.save(args.root_dir + "/save/hd_val", hd_val)
 
 
+def run_eval(args):
+    desired_resolution = (args.desired_resolution_h, args.desired_resolution_w, args.desired_resolution_d)
+    factor = (desired_resolution[0] / ORIGINAL_RES_H, desired_resolution[1] / ORIGINAL_RES_W, desired_resolution[2] / ORIGINAL_RES_D)
+
+    test_dataset = BrainTumorDataset(
+        mode="test",
+        data_path="../rawdata/brats/",
+        desired_resolution=desired_resolution,
+        original_resolution=(ORIGINAL_RES_H, ORIGINAL_RES_W, ORIGINAL_RES_D),
+        transform_input=transforms.Compose([Resize(factor), Normalize()]),
+        transform_gt=transforms.Compose([Labelize(), Resize(factor, mode="nearest")]))
+
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+
+    net = NVDLMED(input_shape=(4,) + desired_resolution).cuda()
+    net.load_state_dict(torch.load(args.checkpoint_path))
+
+    net.eval()
+    dsc_test, hd_test = [], []
+    with tqdm(total=len(test_loader), ascii=True, position=0) as test_bar:
+        test_bar.set_description('[Evaluation]')
+
+        for (input, target) in test_loader:
+            input, target = input.cuda(), target.cuda()
+
+            with torch.no_grad():
+                output_gt = net(input)
+
+                dsc_3d, hd_3d = calculate_3d_metrics(output_gt, target)
+                dsc_test.extend(dsc_3d)
+                hd_test.extend(hd_3d)
+
+            test_bar.update()
+
+        test_bar.set_postfix_str(
+            "Dice: {:.3f} | HD: {:.3f}"
+                .format(np.mean(dsc_3d), np.mean(dsc_test), np.mean(hd_test))
+        )
+
+        np.save(args.root_dir + "/save/dsc_test", dsc_test)
+        np.save(args.root_dir + "/save/hd_test", hd_test)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--data_dir', default='../rawdata/MICCAI_BraTS_2018_Data_Training', type=str)
     parser.add_argument('--root_dir', default='../rawdata/brats', type=str)
     parser.add_argument('--num_workers', default=10, type=int)
+    parser.add_argument('--desired_resolution_h', default=80, type=int)
+    parser.add_argument('--desired_resolution_w', default=96, type=int)
+    parser.add_argument('--desired_resolution_d', default=64, type=int)
     parser.add_argument('--batch_size', default=1, type=int)
     parser.add_argument('--epochs', default=150, type=int)
     parser.add_argument('--lr', default=1e-4, type=float)
@@ -143,6 +194,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    assert args.desired_resolution_h % 16 == 0
+    assert args.desired_resolution_w % 16 == 0
+    assert args.desired_resolution_d % 16 == 0
+
     if args.create_hierarchy:
         print("Creating folders for the model!\n")
         shutil.rmtree(args.root_dir, ignore_errors=True)
@@ -151,5 +206,5 @@ if __name__ == "__main__":
     if args.train:
         run_training(args)
 
-    # if args.eval:
-    #     run_eval(args)
+    if args.eval:
+        run_eval(args)
