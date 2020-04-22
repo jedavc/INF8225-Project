@@ -19,20 +19,24 @@ def run_training(args):
     desired_resolution = (80, 96, 64)
     factor = (desired_resolution[0] / 155, desired_resolution[1] / 240, desired_resolution[2] / 240)
 
-    brain_tumor_dataset = BrainTumorDataset(
-        training_path="../rawdata/MICCAI_BraTS_2018_Data_Training/",
+    train_dataset = BrainTumorDataset(
+        mode="train",
+        data_path="../rawdata/brats/",
         desired_resolution=desired_resolution,
         original_resolution=(155, 240, 240),
-        output_channels=3,
         transform_input=transforms.Compose([Resize(factor), Normalize()]),
         transform_gt=transforms.Compose([Labelize(), Resize(factor, mode="nearest")]))
 
-    training_exemples = int(0.75 * len(brain_tumor_dataset))
-    train_dataset, valid_dataset = random_split(
-        brain_tumor_dataset,
-        [training_exemples, len(brain_tumor_dataset) - training_exemples])
+    val_dataset = BrainTumorDataset(
+        mode="val",
+        data_path="../rawdata/brats/",
+        desired_resolution=desired_resolution,
+        original_resolution=(155, 240, 240),
+        transform_input=transforms.Compose([Resize(factor), Normalize()]),
+        transform_gt=transforms.Compose([Labelize(), Resize(factor, mode="nearest")]))
+
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
-    valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+    valid_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
 
     model = NVDLMED(input_shape=(4,) + desired_resolution)
     model.cuda()
@@ -117,12 +121,13 @@ def run_training(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
+    parser.add_argument('--data_dir', default='../rawdata/MICCAI_BraTS_2018_Data_Training', type=str)
     parser.add_argument('--root_dir', default='../rawdata/brats', type=str)
-    parser.add_argument('--num_workers', default=0, type=int)
+    parser.add_argument('--num_workers', default=10, type=int)
     parser.add_argument('--batch_size', default=1, type=int)
     parser.add_argument('--epochs', default=150, type=int)
     parser.add_argument('--lr', default=1e-4, type=float)
-    parser.add_argument('--train', default=False, action='store_true')
+    parser.add_argument('--train', default=True, action='store_true')
     parser.add_argument('--eval', default=False, action='store_true')
     parser.add_argument('--create_hierarchy', default=False, action='store_true')
     parser.add_argument('--checkpoint_path', default='../rawdata/brats/save/net.pth', type=str)

@@ -29,5 +29,3 @@ def create_hierarchy(data_dir, out_dir, split=[0.75, 0.1, 0.15]):
         copy_tree(patient, os.path.join(out_dir, loc, patient_name))
 
 
-create_hierarchy("../../../rawdata/MICCAI_BraTS_2018_Data_Training", "../../../rawdata/brats")
-

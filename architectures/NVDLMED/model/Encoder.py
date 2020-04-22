@@ -1,4 +1,3 @@
-from torch import nn
 from architectures.NVDLMED.model.ResNetBlock import *
 
 

@@ -1,6 +1,7 @@
 import SimpleITK as sitk
 import torch
 import re
+import os
 from torch.utils.data import Dataset
 from scipy.ndimage import zoom
 import glob
@@ -10,22 +11,21 @@ import numpy as np
 class BrainTumorDataset(Dataset):
 
     def __init__(self,
-                 training_path="../rawdata/MICCAI_BraTS_2018_Data_Training/",
+                 mode="train",
+                 data_path="../rawdata/brats",
                  desired_resolution=(80, 96, 64),
                  original_resolution=(155, 240, 240),
-                 output_channels=3,
                  transform_input=None,
                  transform_gt=None):
-        self.training_path = training_path
-        self.training_files = {"t1": glob.glob(training_path + '*GG/*/*t1.nii.gz'),
-                               "t2": glob.glob(training_path + '*GG/*/*t2.nii.gz'),
-                               "flair": glob.glob(training_path + '*GG/*/*flair.nii.gz'),
-                               "t1ce": glob.glob(training_path + '*GG/*/*t1ce.nii.gz'),
-                               "seg": glob.glob(training_path + '*GG/*/*seg.nii.gz')}
+        self.data_path = os.path.join(data_path, mode)
+        self.data_files = {"t1": glob.glob(self.data_path + '/*/*t1.nii.gz'),
+                               "t2": glob.glob(self.data_path + '/*/*t2.nii.gz'),
+                               "flair": glob.glob(self.data_path + '/*/*flair.nii.gz'),
+                               "t1ce": glob.glob(self.data_path + '/*/*t1ce.nii.gz'),
+                               "seg": glob.glob(self.data_path + '/*/*seg.nii.gz')}
 
         self.desired_resolution = desired_resolution
         self.original_resolution = original_resolution
-        self.output_channels = output_channels
         self.transform_input = transform_input
         self.transform_gt = transform_gt
         self.files = self.find_files()
@@ -36,7 +36,7 @@ class BrainTumorDataset(Dataset):
             path.findall(item)[0]: item
             for item in items
         }
-            for items in list(zip(self.training_files["t1"], self.training_files["t2"], self.training_files["t1ce"], self.training_files["flair"], self.training_files["seg"]))]
+            for items in list(zip(self.data_files["t1"], self.data_files["t2"], self.data_files["t1ce"], self.data_files["flair"], self.data_files["seg"]))]
 
         return data_paths
 
@@ -47,7 +47,7 @@ class BrainTumorDataset(Dataset):
         data_files = self.files[idx]
         numpy_data = np.array([sitk.GetArrayFromImage(sitk.ReadImage(file))
                                for file in data_files.values()], dtype=np.float32)
-        input = self.transform_input(numpy_data)
+        input = self.transform_input(numpy_data[0:4])
         gt = self.transform_gt(numpy_data[-1])
 
         return torch.from_numpy(input), torch.from_numpy(gt)
