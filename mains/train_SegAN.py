@@ -4,28 +4,35 @@ from datasets.MelanomaDataset import *
 import torch
 import torchvision.utils as vutils
 from torch.optim import Adam
-import torch.nn.functional as F
-import logging
-import os
 import matplotlib.pyplot as plt
-
-# Segmentor -> Generator
-# Critic - > Discriminator
 output_path = "./outputs"
 data_path = "./datasets/data"
-num_epoch = 200
+num_epoch = 300
 lr = 0.003
 lr_decay = 0.5
-batch_size = 12
+batch_size = 16
 k_decay = 0.9
 k = 1
 
-def dice_loss(input,target):
-    num = input * target
+def dice_score_and_jaccard(predicted, target):
+    predicted_array = predicted.cpu().numpy()
+    target_array = target.cpu().numpy()
+    Jaccard, Dice = [], []
+    for x in range(predicted.size()[0]):
+        jaccard = np.sum(predicted_array[x][target_array[x] == 1]) / float(
+            np.sum(predicted_array[x]) + np.sum(target_array[x]) - np.sum(predicted_array[x][target_array[x] == 1]))
+        dice = np.sum(predicted_array[x][target_array[x] == 1]) * 2 / float(np.sum(predicted_array[x]) + np.sum(target_array[x]))
+        Jaccard.append(jaccard)
+        Dice.append(dice)
+
+    return np.mean(Dice, axis=0), np.mean(Jaccard, axis=0)
+
+def dice_loss(predicted,target):
+    num = predicted * target
     num = torch.sum(num, dim=2)
     num = torch.sum(num, dim=2)
 
-    den1 = input * input
+    den1 = predicted * predicted
     den1 = torch.sum(den1, dim=2)
     den1 = torch.sum(den1, dim=2)
 
@@ -35,7 +42,7 @@ def dice_loss(input,target):
 
     dice = 2 * (num/(den1+den2))
 
-    dice_total = 1 - 1 * torch.sum(dice)/dice.size(0)#divide by batchsize
+    dice_total = torch.sum(dice)/dice.size(0)
 
     return dice_total
 
@@ -44,87 +51,107 @@ def update_optimizer(lr, Segmentor_params, Critic_params):
     optimizer_crit = Adam(Critic_params, lr=lr, betas=(0.5, 0.999))
     return optimizer_seg, optimizer_crit
 
-def get_accuracy(model, data_loader, output_path):
+def save_checkpoints(input, label, predictions, output_path, epoch, is_train):
+    id = ""
+    if not is_train:
+        id = "_val"
+    vutils.save_image(input.double(),
+                      '%s/input%s_%d.png' % (output_path, id, epoch),
+                      normalize=True)
+    vutils.save_image(label.double(),
+                      '%s/label%s_%d.png' % (output_path, id, epoch),
+                      normalize=True)
+    vutils.save_image(predictions.double(),
+                      '%s/result%s_%d.png' % (output_path, id, epoch),
+                      normalize=True)
+
+def multi_scale_loss(input_clone, target, output, Critic):
+
+    output_masked = mask_image(input_clone, output)
+    predicted_C = Critic(output_masked)
+
+    target_masked = mask_image(input_clone, target)
+    target_C = Critic(target_masked)
+
+    return torch.mean(torch.abs(predicted_C - target_C))
+
+def mask_image(input, mask):
+    masked_image = input.clone()
+    for d in range(input.shape[1]):
+        masked_image[:, d, :, :] = (input[:, d, :, :].unsqueeze(1) * mask).squeeze()
+    return masked_image.cuda()
+
+def eval(model, data_loader, output_path, epoch=0):
+    model.eval()
     with torch.no_grad():
         correct = 0
+        dice_loss_eval = 0
+        Dice, Jaccard = [], []
         for data, label in data_loader:
             data, label = data.cuda(), label.cuda()
             predictions = model(data)
+
+            predictions = torch.sigmoid(predictions * k)
             predictions[predictions < 0.4] = 0
             predictions[predictions >= 0.4] = 1
-            _, predicted = torch.max(predictions, 1)
-            correct += (predicted == label).sum().item()/label.nelement()
+            dice_loss_eval += dice_loss(predictions, label)
+            correct += (predictions == label).sum().item()/label.nelement()
+            dice_mean, jaccard_mean = dice_score_and_jaccard(predictions, label)
+            Dice.append(dice_mean)
+            Jaccard.append(jaccard_mean)
 
-        if epoch % 10 == 0:
-            vutils.save_image(data.double(),
-                              '%s/input_val.png' % output_path,
-                              normalize=True)
-            vutils.save_image(target.double(),
-                              '%s/label_val.png' % output_path,
-                              normalize=True)
-            vutils.save_image(predictions.double(),
-                              '%s/result_val.png' % output_path,
-                              normalize=True)
-    return correct / len(data_loader.dataset)
+        if epoch % 20 == 0:
+            save_checkpoints(data, label, predictions, output_path, epoch, is_train=False)
+
+        dice_loss_eval = dice_loss_eval/len(data_loader)
+        dice_score = np.array(Dice).mean()
+        jaccard_index = np.array(Jaccard).mean()
+        print("Dice_loss : {}".format(dice_loss_eval))
+        print("Dice_score : {}".format(dice_score))
+        print("Jaccard_index : {}".format(jaccard_index))
+    return correct / len(data_loader), dice_score, jaccard_index
 
 if __name__ == "__main__":
 
+    ## build models
+    Segmentor = Segmentor().cuda()
+    Critic = Critic().cuda()
 
-    cwd = os.getcwd()
-    print(cwd)
-    ##torch.manual_seed(opt.seed) Set la seed
-    cuda = True
-
-    logging.info("Build Model")
-
-    Segmentor = Segmentor()
-    logging.debug(Segmentor)
-
-    Critic = Critic()
-    logging.debug(Critic)
-
-    if cuda:
-        Segmentor.cuda()
-        Critic.cuda()
-
+    #set optimizers
     optimizer_seg, optimizer_crit = update_optimizer(lr, Segmentor.parameters(), Critic.parameters())
 
-    max_iou = 0
+    #Init training
     Segmentor.train()
     Critic.train()
     train_loader = loader(Dataset(data_path), batch_size)
-    val_loader = loader(Dataset_val(data_path), batch_size)
-    losses_S = []
-    losses_C = []
+
+    losses_dice_val = []
+    losses_S_train = []
+    losses_C_train = []
     train_accuracies = []
     val_accuracies = []
+    val_dices = []
+    val_jaccards = []
+    max_jaccard = 0
+    max_dice = 0
     for epoch in range(num_epoch):
         correct_train = 0
+        loss_S_train = 0
+        loss_C_train = 0
         for batch_idx, sample in enumerate(train_loader):
 
             Critic.zero_grad()
             input, target = sample[0].cuda(), sample[1].cuda()
+
             output = Segmentor(input)
-            output = F.sigmoid(output*k)
+            output = torch.sigmoid(output*k)
             output = output.detach()
-            output_masked = input.clone()
-            input_mask = input.clone()
+            input_clone = input.clone()
 
-            # detach G from the network
-            for d in range(3):
-                output_masked[:,d,:,:] = (input_mask[:, d,:,:].unsqueeze(1) * output).squeeze()
+            loss_C = -multi_scale_loss(input_clone, target, output, Critic)
+            loss_C_train += loss_C.item()
 
-            output_masked = output_masked.cuda()
-            
-            result = Critic(output_masked)
-            target_masked = input.clone()
-
-            for d in range(3):
-                target_masked[:,d,:,:] = (input_mask[:,d,:,:].unsqueeze(1) * target).squeeze()
-            target_masked = target_masked.cuda()
-
-            target_C = Critic(target_masked)
-            loss_C = - torch.mean(torch.abs(result - target_C))
+            print("Loss C: {} ".format(loss_C.item()))
             loss_C.backward()
             optimizer_crit.step()
 
@@ -132,131 +159,108 @@ if __name__ == "__main__":
             for p in Critic.parameters():
                 p.data.clamp_(-0.05, 0.05)
 
-            #train G
+            #train S
             Segmentor.zero_grad()
             output = Segmentor(input)
-            output = F.sigmoid(output*k)
-    
-            for d in range(3):
-                output_masked[:,d,:,:] = (input_mask[:,d,:,:].unsqueeze(1) * output).squeeze()
-            
-            output_masked = output_masked.cuda()
-            result = Critic(output_masked)
-            for d in range(3):
-                target_masked[:, d, :, :] = (input_mask[:,d,:,:].unsqueeze(1) * target).squeeze()
+            output = torch.sigmoid(output*k)
 
-            target_masked = target_masked.cuda()
-            target_S = Critic(target_masked)
-            loss_dice = dice_loss(output, target)
-            print("Loss dice: " + str(loss_dice.item()))
-            loss_S = torch.mean(torch.abs(result - target_S))
-            loss_S_joint = torch.mean(torch.abs(result - target_S)) + loss_dice
-            loss_S_joint.backward()
+            loss_S = multi_scale_loss(input_clone, target, output, Critic)
+            loss_S_train += loss_S.item()
+            loss_dice_train = 1 - 1*dice_loss(output, target)
+
+            print("Loss dice: " + str(loss_dice_train.item()))
+            loss_S_dice = loss_dice_train + loss_S
+            print("Loss S: {} ".format(loss_S.item()))
+            loss_S_dice.backward()
             optimizer_seg.step()
 
             # Accuracy
             output[output < 0.4] = 0
             output[output >= 0.4] = 1
-            _, binary_output = torch.max(output, 1)
-            correct_train += (binary_output == target).sum().item()/target.nelement()
+            correct_train += (output == target).sum().item()/target.nelement()
 
-        train_accuracy = correct_train / len(train_loader.dataset)
+
+        loss_C_train = loss_C_train / len(train_loader)
+        losses_C_train.append(loss_C_train)
+
+        print("--------- {} ---------".format(epoch))
+        print("Train_S_loss : {}".format(loss_C_train))
+
+        loss_S_train = loss_S_train / len(train_loader)
+        losses_S_train.append(loss_S_train)
+        print("Train_S_loss : {}".format(loss_S_train))
+
+        train_accuracy = correct_train / len(train_loader)
+        train_accuracies.append(train_accuracy)
         print("Train_accuracy : {}".format(train_accuracy))
 
-        train_accuracies.append(correct_train)
-        losses_C.append(loss_C.item())
-        losses_S.append(loss_S.item())
+        if epoch % 20 == 0:
+            save_checkpoints(input, target, output, output_path, epoch, is_train=True)
 
+        ### ------ Evaluation ------ ###
 
-        print("===> Epoch[{}]({}/{}): Batch Dice: {:.4f}".format(epoch, batch_idx, len(train_loader), 1 - loss_dice.item()))
-        print("===> Epoch[{}]({}/{}): Segmentor_Loss: {:.4f}".format(epoch, batch_idx, len(train_loader), loss_S.item()))
-        print("===> Epoch[{}]({}/{}): Critic_Loss: {:.4f}".format(epoch, batch_idx, len(train_loader), loss_C.item()))
-        vutils.save_image(input.double(),
-                '%s/input.png' % output_path,
-                normalize=True)
-        vutils.save_image(target.double(),
-                '%s/label.png' % output_path,
-                normalize=True)
-        vutils.save_image(output.double(),
-                '%s/result.png' % output_path,
-                normalize=True)
-
-        Segmentor.eval()
-        # Val Accuracy
-        val_accuracy = get_accuracy(Segmentor, val_loader, output_path)
-        val_accuracies.append(val_accuracy)
+        val_loader = loader(Dataset_val(data_path, False), batch_size)
+        val_accuracy, val_dice, val_jaccard = eval(Segmentor, val_loader, output_path, epoch)
+        if max_dice < val_dice:
+            torch.save(Segmentor, './models/Segmentor_max_dice.pt')
+            max_dice = val_dice
+        if max_jaccard < val_jaccard:
+            torch.save(Segmentor, './models/Segmentor_max_jaccard.pt')
+            max_jaccard = val_jaccard
         print("Val_accuracy : {}".format(val_accuracy))
-
+        val_accuracies.append(val_accuracy)
+        val_dices.append(val_dice)
+        val_jaccards.append(val_jaccard)
         Segmentor.train()
+        Critic.train()
 
-        """  if epoch % 10 == 0:
-                correct = 0
-                Segmentor.eval()
-                IoUs, dices = [], []
-                for batch_idx, sample in enumerate(val_loader):
-                    input, gt = sample[0].cuda(), sample[1].cuda()
-    
-                    pred = Segmentor(input)
-                    pred[pred < 0.4] = 0
-                    pred[pred >= 0.4] = 1
-                    pred = pred.type(torch.LongTensor)
-                    pred_np = pred.data.cpu().numpy()
-                    gt = gt.data.cpu().numpy()
-                    for x in range(input.size()[0]):
-                        IoU = np.sum(pred_np[x][gt[x] == 1]) / float(np.sum(pred_np[x]) + np.sum(gt[x]) - np.sum(pred_np[x][gt[x] == 1]))
-                        dice = np.sum(pred_np[x][gt[x] == 1]) * 2 / float(np.sum(pred_np[x]) + np.sum(gt[x]))
-                        IoUs.append(IoU)
-                        dices.append(dice)
-    
-                accuracy = 100 * correct / len(val_loader.dataset)
-                val_accuracies.append(accuracy)
-                Segmentor.train()
-                IoUs = np.array(IoUs, dtype=np.float64)
-                dices = np.array(dices, dtype=np.float64)
-                mIoU = np.mean(IoUs, axis=0)
-                mdice = np.mean(dices, axis=0)
-                print('mIoU: {:.4f}'.format(mIoU))
-                print('Dice: {:.4f}'.format(mdice))
-                if mIoU > max_iou:
-                    max_iou = mIoU
-                torch.save(Segmentor.state_dict(), '%s/NetS_epoch_%d.pth' % (output_path, epoch))
-                vutils.save_image(sample[0].double(),
-                                  '%s/input_val.png' % output_path,
-                                  normalize=True)
-                vutils.save_image(sample[1].double(),
-                                  '%s/label_val.png' % output_path,
-                                  normalize=True)
-                pred = pred.type(torch.FloatTensor)
-                vutils.save_image(pred.data.double(),
-                                  '%s/result_val.png' % output_path,
-                                  normalize=True) """
-
-        # Adjust epoch number
+        # Decrease learning rate and update
         if epoch % 25 == 0:
-                    lr = lr*lr_decay
-                    if k > 0.3:
-                        k = k*k_decay
-                    if lr <= 0.00000001:
-                        lr = 0.00000001
-                    print('Learning Rate: {:.6f}'.format(lr))
-                    print('K: {:.4f}'.format(k))
-                    print('Max mIoU: {:.4f}'.format(max_iou))
-                    optimizer_seg, optimizer_crit = update_optimizer(lr, Segmentor.parameters(), Critic.parameters())
+            lr = lr*lr_decay
+            if k > 0.3:
+                k = k*k_decay
+            if lr <= 0.00000001:
+                lr = 0.00000001
+            optimizer_seg, optimizer_crit = update_optimizer(lr, Segmentor.parameters(), Critic.parameters())
 
-    plt.title("Training and Validation Losses for Critic")
+    ### ------ Test ------ ###
+    torch.save(Segmentor, './models/Segmentor_final.pt')
+    test_loader = loader(Dataset_val(data_path, True), batch_size)
+
+    test_accuracy, dice, jaccard = eval(Segmentor, test_loader, output_path)
+    print("Test_accuracy : {}".format(test_accuracy))
+    print("Max Validation Jaccard index : {}".format(max_jaccard))
+    print("Max_Validation Dice Score : {}".format(max_dice))
+
+    plt.title("Validation Dice Score")
     plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.plot(losses_C)
+    plt.ylabel("Dice score")
+    plt.plot(val_dices)
+    plt.savefig('./plots/dice.png')
     plt.show()
 
-    plt.title("Training and Validation Losses for Segmentor")
+    plt.title("Validation Jaccard Index")
     plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.plot(losses_S)
+    plt.ylabel("Jaccard Index")
+    plt.plot(val_jaccards)
+    plt.savefig('./plots/jaccard.png')
     plt.show()
 
-    plt.title("Training and Validation Accuracy for Segmentor")
+    plt.title("Training and Validation Losses for Critic and Segmentor")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.plot(losses_C_train, label="Critic Loss")
+    plt.plot(losses_S_train, label="Segmentor Loss")
+    plt.legend(loc="lower right")
+    plt.savefig('./plots/losses.png')
+    plt.show()
+
+    plt.title("Training and Validation Accuracies for Segmentor")
     plt.xlabel("Epoch")
     plt.ylabel("Accuracy")
-    plt.plot(train_accuracies, val_accuracies)
+    plt.plot(train_accuracies, label="Train")
+    plt.plot(val_accuracies, label="Validation")
+    plt.legend(loc="lower right")
+    plt.savefig('./plots/accuracy.png')
     plt.show()
+

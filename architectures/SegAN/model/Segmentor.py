@@ -3,117 +3,94 @@ import torch.nn as nn
 from math import sqrt
 import torch
 import torch.nn.functional as F
-from architectures.SegAN.model.ConvolutionalPart import ConvolutionalPart
-from architectures.SegAN.model.ResidualPart import ResidualPart
-from architectures.SegAN.model.ResidualPartD import ResidualPartD
+from architectures.SegAN.model.GlobalConvolution import GlobalConvolution
+from architectures.SegAN.model.ResidualDecoderBlock import ResidualEncoderBlock
+from architectures.SegAN.model.ResidualEncoderBlock import ResidualEncoderBlock
 
-channel_dim = 3
-ndf = 64
+channels = 3
+size = 64
 class Segmentor(nn.Module):
     def __init__(self):
         super(Segmentor, self).__init__()
-        self.convblock1 = nn.Sequential(
-            nn.Conv2d(channel_dim, ndf, 7, 2, 3, bias=False),
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(channels, size, 7, 2, 3, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
         )
-        self.convblock1_1 = ResidualPart(ndf)
+        self.conv1_1 = ResidualEncoderBlock(size)
 
-        self.convblock2 = nn.Sequential(
-            nn.Conv2d(ndf, ndf * 2, 5, 2, 2, bias=False),
-            nn.BatchNorm2d(ndf * 2),
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(size, size * 2, 5, 2, 2, bias=False),
+            nn.BatchNorm2d(size * 2),
             nn.LeakyReLU(0.2, inplace=True),
         )
-        self.convblock2_1 = ResidualPart(ndf * 2)
+        self.conv2_1 = ResidualEncoderBlock(size * 2)
 
-        self.convblock3 = nn.Sequential(
-            nn.Conv2d(ndf * 2, ndf * 4, 5, 2, 2, bias=False),
-            nn.BatchNorm2d(ndf * 4),
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(size * 2, size * 4, 5, 2, 2, bias=False),
+            nn.BatchNorm2d(size * 4),
             nn.LeakyReLU(0.2, inplace=True),
         )
-        self.convblock3_1 = ResidualPart(ndf * 4)
+        self.conv3_1 = ResidualEncoderBlock(size * 4)
 
-        self.convblock4 = nn.Sequential(
-            nn.Conv2d(ndf * 4, ndf * 8, 5, 2, 2, bias=False),
-            nn.BatchNorm2d(ndf * 8),
+        self.conv4 = nn.Sequential(
+            nn.Conv2d(size * 4, size * 8, 5, 2, 2, bias=False),
+            nn.BatchNorm2d(size * 8),
             nn.LeakyReLU(0.2, inplace=True),
         )
-        self.convblock4_1 = ResidualPart(ndf * 8)
+        self.conv4_1 = ResidualEncoderBlock(size * 8)
 
-        self.convblock5 = nn.Sequential(
-            nn.Conv2d(ndf * 8, ndf * 16, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf * 16),
+        self.conv5 = nn.Sequential(
+            nn.Conv2d(size * 8, size * 16, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(size * 16),
             nn.LeakyReLU(0.2, inplace=True),
         )
-        self.convblock5_1 = ResidualPart(ndf * 16)
+        self.conv5_1 = ResidualEncoderBlock(size * 16)
 
-        self.convblock6 = nn.Sequential(
-            nn.Conv2d(ndf * 16, ndf * 32, kernel_size=1, bias=False),
-            nn.BatchNorm2d(ndf * 32),
+        self.conv6 = nn.Sequential(
+            nn.Conv2d(size * 16, size * 32, kernel_size=1, bias=False),
+            nn.BatchNorm2d(size * 32),
             nn.LeakyReLU(0.2, inplace=True),
         )
-        #self.convblock6_1 = ResidualPart(ndf*32)
+        self.deconv1 = nn.Sequential(
+            nn.Conv2d(size * 32, size * 16, 3, 1, 1, bias=False),
+            nn.BatchNorm2d(size * 16),
+            nn.ReLU(True),
+        )
+        self.deconv1_1 = ResidualEncoderBlock(size * 16)
 
+        self.deconv2 = nn.Sequential(
+            GlobalConvolution(size * 16 * 2, size * 8, (7, 7)),
+            nn.BatchNorm2d(size * 8),
+            nn.ReLU(True),
+        )
+        self.deconv2_1 = ResidualEncoderBlock(size * 8)
 
-        self.deconvblock1 = nn.Sequential(
-            # state size. (cat: ngf*32) x 1 x 1
-            nn.Conv2d(ndf * 32, ndf * 16, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(ndf * 16),
+        self.deconv3 = nn.Sequential(
+            GlobalConvolution(size * 8 * 2, size * 4, (7, 7)),
+            nn.BatchNorm2d(size * 4),
             nn.ReLU(True),
-            # state size. (ngf*16) x 2 x 2
         )
-        self.deconvblock1_1 = ResidualPartD(ndf * 16)
-
-        self.deconvblock2 = nn.Sequential(
-            # state size. (ngf*8) x 4 x 4
-            ConvolutionalPart(ndf * 16 * 2, ndf * 8, (7, 7)),
-            # nn.ConvTranspose2d(ndf * 8 * 2, ndf * 8, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf * 8),
+        self.deconv3_1 = ResidualEncoderBlock(size * 4)
+        self.deconv4 = nn.Sequential(
+            GlobalConvolution(size * 4 * 2, size * 2, (9, 9)),
+            nn.BatchNorm2d(size * 2),
             nn.ReLU(True),
-            # state size. (ngf*8) x 8 x 8
         )
-        self.deconvblock2_1 = ResidualPartD(ndf * 8)
-
-        self.deconvblock3 = nn.Sequential(
-            # state size. (ngf*8) x 8 x 8
-            ConvolutionalPart(ndf * 8 * 2, ndf * 4, (7, 7)),
-            # nn.ConvTranspose2d(ndf * 8 * 2, ndf * 4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf * 4),
+        self.deconv4_1 = ResidualEncoderBlock(size * 2)
+        self.deconv5 = nn.Sequential(
+            GlobalConvolution(size * 2 * 2, size, (9, 9)),
+            nn.BatchNorm2d(size),
             nn.ReLU(True),
-            # state size. (ngf*4) x 16 x 16
         )
-        self.deconvblock3_1 = ResidualPartD(ndf * 4)
-        self.deconvblock4 = nn.Sequential(
-            # state size. (ngf*4) x 16 x 16
-            ConvolutionalPart(ndf * 4 * 2, ndf * 2, (9, 9)),
-            # nn.ConvTranspose2d(ndf * 4 * 2, ndf * 2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf * 2),
+        self.deconv5_1 = ResidualEncoderBlock(size)
+        self.deconv6 = nn.Sequential(
+            GlobalConvolution(size * 2, size, (11, 11)),
+            nn.BatchNorm2d(size),
             nn.ReLU(True),
-            # state size. (ngf*2) x 32 x 32
         )
-        self.deconvblock4_1 = ResidualPartD(ndf * 2)
-        self.deconvblock5 = nn.Sequential(
-            # state size. (ngf*2) x 32 x 32
-            ConvolutionalPart(ndf * 2 * 2, ndf, (9, 9)),
-            # nn.ConvTranspose2d(ndf * 2 * 2,     ndf, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf),
-            nn.ReLU(True),
-            # state size. (ngf) x 64 x 64
-        )
-        self.deconvblock5_1 = ResidualPartD(ndf)
-        self.deconvblock6 = nn.Sequential(
-            # state size. (ngf) x 64 x 64
-            ConvolutionalPart(ndf * 2, ndf, (11, 11)),
-            # nn.ConvTranspose2d( ndf * 2, ndf, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf),
-            nn.ReLU(True),
-            # state size. (ngf) x 128 x 128
-        )
-        self.deconvblock6_1 = ResidualPartD(ndf)
-        self.deconvblock7 = nn.Sequential(
-            # state size. (ngf) x 128 x 128
-            nn.Conv2d(ndf, 1, 5, 1, 2, bias=False),
-            # state size. (channel_dim) x 128 x 128
-            # nn.Sigmoid()
+        self.deconv6_1 = ResidualEncoderBlock(size)
+        self.deconv7 = nn.Sequential(
+            nn.Conv2d(size, 1, 5, 1, 2, bias=False),
         )
 
 
@@ -133,42 +110,39 @@ class Segmentor(nn.Module):
                     m.bias.data.zero_()
 
     def forward(self, input):
-        # for now it only supports one GPU
-        encoder1 = self.convblock1(input)
-        encoder1 = self.convblock1_1(encoder1)
-        encoder2 = self.convblock2(encoder1)
-        encoder2 = self.convblock2_1(encoder2)
-        encoder3 = self.convblock3(encoder2)
-        encoder3 = self.convblock3_1(encoder3)
-        encoder4 = self.convblock4(encoder3)
-        encoder4 = self.convblock4_1(encoder4) + encoder4
-        encoder5 = self.convblock5(encoder4)
-        encoder5 = self.convblock5_1(encoder5)
-        encoder6 = self.convblock6(encoder5)
-        #encoder6 = self.convblock6_1(encoder6)
+        enc1 = self.conv1(input)
+        enc1 = self.conv1_1(enc1)
+        enc2 = self.conv2(enc1)
+        enc2 = self.conv2_1(enc2)
+        enc3 = self.conv3(enc2)
+        enc3 = self.conv3_1(enc3)
+        enc4 = self.conv4(enc3)
+        enc4 = self.conv4_1(enc4) + enc4
+        enc5 = self.conv5(enc4)
+        enc5 = self.conv5_1(enc5)
+        enc6 = self.conv6(enc5)
 
-        decoder1 = self.deconvblock1(encoder6)
-        decoder1 = torch.cat([encoder5, decoder1], 1)
-        decoder1 = F.upsample(decoder1, size=encoder4.size()[2:], mode='bilinear')
-        decoder2 = self.deconvblock2(decoder1)
-        decoder2 = self.deconvblock2_1(decoder2) + decoder2
-        # concatenate along depth dimension
-        decoder2 = torch.cat([encoder4, decoder2], 1)
-        decoder2 = F.upsample(decoder2, size=encoder3.size()[2:], mode='bilinear')
-        decoder3 = self.deconvblock3(decoder2)
-        decoder3 = self.deconvblock3_1(decoder3)
-        decoder3 = torch.cat([encoder3, decoder3], 1)
-        decoder3 = F.upsample(decoder3, size=encoder2.size()[2:], mode='bilinear')
-        decoder4 = self.deconvblock4(decoder3)
-        decoder4 = self.deconvblock4_1(decoder4)
-        decoder4 = torch.cat([encoder2, decoder4], 1)
-        decoder4 = F.upsample(decoder4, size=encoder1.size()[2:], mode='bilinear')
-        decoder5 = self.deconvblock5(decoder4)
-        decoder5 = self.deconvblock5_1(decoder5)
-        decoder5 = torch.cat([encoder1, decoder5], 1)
-        decoder5 = F.upsample(decoder5, size = input.size()[2:], mode='bilinear')
-        decoder6 = self.deconvblock6(decoder5)
-        decoder6 = self.deconvblock6_1(decoder6)
-        decoder7 = self.deconvblock7(decoder6)
+        dec1 = self.deconv1(enc6)
+        dec1 = torch.cat([enc5, dec1], 1)
+        dec1 = F.interpolate(dec1, size=enc4.size()[2:], mode='bilinear')
+        dec2 = self.deconv2(dec1)
+        dec2 = self.deconv2_1(dec2) + dec2
+        dec2 = torch.cat([enc4, dec2], 1)
+        dec2 = F.interpolate(dec2, size=enc3.size()[2:], mode='bilinear')
+        dec3 = self.deconv3(dec2)
+        dec3 = self.deconv3_1(dec3)
+        dec3 = torch.cat([enc3, dec3], 1)
+        dec3 = F.interpolate(dec3, size=enc2.size()[2:], mode='bilinear')
+        dec4 = self.deconv4(dec3)
+        dec4 = self.deconv4_1(dec4)
+        dec4 = torch.cat([enc2, dec4], 1)
+        dec4 = F.interpolate(dec4, size=enc1.size()[2:], mode='bilinear')
+        dec5 = self.deconv5(dec4)
+        dec5 = self.deconv5_1(dec5)
+        dec5 = torch.cat([enc1, dec5], 1)
+        dec5 = F.interpolate(dec5, size=input.size()[2:], mode='bilinear')
+        dec6 = self.deconv6(dec5)
+        dec6 = self.deconv6_1(dec6)
+        dec7 = self.deconv7(dec6)
 
-        return decoder7
+        return dec7
