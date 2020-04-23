@@ -17,11 +17,11 @@ class LabelToTensor(object):
         tensor[tensor == self.before] = self.after
         return tensor
 
-class Dataset(torch.utils.data.Dataset):
+class Dataset_train(torch.utils.data.Dataset):
 
-    def __init__(self, root):
+    def __init__(self, path):
         self.size = (180, 135)
-        self.root = root
+        self.path = path
 
         self.img_resize = Compose([
             Resize(self.size, Image.BILINEAR),
@@ -39,9 +39,9 @@ class Dataset(torch.utils.data.Dataset):
         ])
 
         #sort file names
-        self.input_paths = sorted(glob(os.path.join(self.root, '{}/*.jpg'.format("ISIC-2017_Training_Data"))))
-        self.label_paths = sorted(glob(os.path.join(self.root, '{}/*.png'.format("ISIC-2017_Training_Part1_GroundTruth"))))
-        self.name = os.path.basename(root)
+        self.input_paths = sorted(glob(os.path.join(self.path, '{}/*.jpg'.format("ISIC-2017_Training_Data"))))
+        self.label_paths = sorted(glob(os.path.join(self.path, '{}/*.png'.format("ISIC-2017_Training_Part1_GroundTruth"))))
+        self.name = os.path.basename(path)
 
     def __getitem__(self, index):
         image = Image.open(self.input_paths[index]).convert('RGB')
@@ -59,6 +59,7 @@ class Dataset(torch.utils.data.Dataset):
         label = self.label_transform(label)
         return image, label
 
+    #flip images
     def rand_flip_image(self, image, label):
 
         if random.random() > 0.5:
@@ -71,7 +72,7 @@ class Dataset(torch.utils.data.Dataset):
         return image, label
 
     # crop image to 128 x 128 dims
-    def rand_crop_image(self,image, label):
+    def rand_crop_image(self, image, label):
 
         w, h = image.size
         th, tw = (128, 128)
@@ -91,20 +92,20 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.input_paths)
 
 
-class Dataset_val(torch.utils.data.Dataset):
+class Dataset_val_test(torch.utils.data.Dataset):
     def __init__(self, data_dir, isTest):
 
-        size = (128, 128)
+        self.size = (128, 128)
         self.data_dir = data_dir
 
         self.img_transform = Compose([
-            Resize(size, Image.BILINEAR),
+            Resize(self.size, Image.BILINEAR),
             ToTensor(),
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
 
         self.label_transform = Compose([
-            Resize(size, Image.NEAREST),
+            Resize(self.size, Image.NEAREST),
             LabelToTensor()
         ])
 
@@ -114,16 +115,14 @@ class Dataset_val(torch.utils.data.Dataset):
         if not isTest:
             self.input_path = sorted(glob(os.path.join(self.data_dir, '{}/*.jpg'.format("ISIC-2017_Validation_Data"))))
             self.label_path = sorted(glob(os.path.join(self.data_dir, '{}/*.png'.format("ISIC-2017_Validation_Part1_GroundTruth"))))
-        self.name = os.path.basename(data_dir)
 
+        self.name = os.path.basename(data_dir)
 
     def __getitem__(self, index):
         image = Image.open(self.input_path[index]).convert('RGB')
         label = Image.open(self.label_path[index]).convert('P')
-
         image = self.img_transform(image)
         label = self.label_transform(label)
-
         return image, label
 
     def __len__(self):

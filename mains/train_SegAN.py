@@ -10,7 +10,7 @@ data_path = "./datasets/data"
 num_epoch = 300
 lr = 0.003
 lr_decay = 0.5
-batch_size = 16
+batch_size = 12
 k_decay = 0.9
 k = 1
 
@@ -27,7 +27,16 @@ def dice_score_and_jaccard(predicted, target):
 
     return np.mean(Dice, axis=0), np.mean(Jaccard, axis=0)
 
-def dice_loss(predicted,target):
+def multi_scale_loss(input_clone, target, output, Critic):
+
+    output_masked = mask_image(input_clone, output)
+    predicted_C = Critic(output_masked)
+
+    target_masked = mask_image(input_clone, target)
+    target_C = Critic(target_masked)
+
+    return torch.mean(torch.abs(predicted_C - target_C))
+def dice_loss(predicted, target):
     num = predicted * target
     num = torch.sum(num, dim=2)
     num = torch.sum(num, dim=2)
@@ -65,16 +74,6 @@ def save_checkpoints(input, label, predictions, output_path, epoch, is_train):
                       '%s/result%s_%d.png' % (output_path, id, epoch),
                       normalize=True)
 
-def multi_scale_loss(input_clone, target, output, Critic):
-
-    output_masked = mask_image(input_clone, output)
-    predicted_C = Critic(output_masked)
-
-    target_masked = mask_image(input_clone, target)
-    target_C = Critic(target_masked)
-
-    return torch.mean(torch.abs(predicted_C - target_C))
-
 def mask_image(input, mask):
     masked_image = input.clone()
     for d in range(input.shape[1]):
@@ -111,6 +110,8 @@ def eval(model, data_loader, output_path, epoch=0):
         print("Jaccard_index : {}".format(jaccard_index))
     return correct / len(data_loader), dice_score, jaccard_index
 
+
+
 if __name__ == "__main__":
 
     ## build models
@@ -123,7 +124,7 @@ if __name__ == "__main__":
     #Init training
     Segmentor.train()
     Critic.train()
-    train_loader = loader(Dataset(data_path), batch_size)
+    train_loader = loader(Dataset_train(data_path), batch_size)
 
     losses_dice_val = []
     losses_S_train = []
@@ -134,12 +135,14 @@ if __name__ == "__main__":
     val_jaccards = []
     max_jaccard = 0
     max_dice = 0
+
     for epoch in range(num_epoch):
         correct_train = 0
         loss_S_train = 0
         loss_C_train = 0
         for batch_idx, sample in enumerate(train_loader):
 
+            #Train Critic
             Critic.zero_grad()
             input, target = sample[0].cuda(), sample[1].cuda()
 
@@ -148,7 +151,7 @@ if __name__ == "__main__":
             output = output.detach()
             input_clone = input.clone()
 
-            loss_C = -multi_scale_loss(input_clone, target, output, Critic)
+            loss_C = - multi_scale_loss(input_clone, target, output, Critic)
             loss_C_train += loss_C.item()
 
             print("Loss C: {} ".format(loss_C.item()))
@@ -159,7 +162,7 @@ if __name__ == "__main__":
             for p in Critic.parameters():
                 p.data.clamp_(-0.05, 0.05)
 
-            #train S
+            #train Segmentor
             Segmentor.zero_grad()
             output = Segmentor(input)
             output = torch.sigmoid(output*k)
@@ -199,7 +202,7 @@ if __name__ == "__main__":
 
         ### ------ Evaluation ------ ###
 
-        val_loader = loader(Dataset_val(data_path, False), batch_size)
+        val_loader = loader(Dataset_val_test(data_path, False), batch_size)
         val_accuracy, val_dice, val_jaccard = eval(Segmentor, val_loader, output_path, epoch)
         if max_dice < val_dice:
             torch.save(Segmentor, './models/Segmentor_max_dice.pt')
@@ -225,7 +228,7 @@ if __name__ == "__main__":
 
     ### ------ Test ------ ###
     torch.save(Segmentor, './models/Segmentor_final.pt')
-    test_loader = loader(Dataset_val(data_path, True), batch_size)
+    test_loader = loader(Dataset_val_test(data_path, True), batch_size)
 
     test_accuracy, dice, jaccard = eval(Segmentor, test_loader, output_path)
     print("Test_accuracy : {}".format(test_accuracy))

@@ -4,46 +4,47 @@ import torch
 from architectures.SegAN.model.GlobalConvolution import GlobalConvolution
 
 channel_dim = 3
-ndf = 64
+dim = 64
+
 class Critic(nn.Module):
     def __init__(self):
         super(Critic, self).__init__()
 
         self.conv1 = nn.Sequential(
-            GlobalConvolution(channel_dim, ndf, (13, 13), 2),
-            nn.BatchNorm2d(ndf),
-            nn.LeakyReLU(0.2, inplace=True),
+            GlobalConvolution(channel_dim, dim, (13, 13), 2),
+            nn.BatchNorm2d(dim),
+            nn.LeakyReLU(0.2, inplace=True)
         )
 
         self.conv2 = nn.Sequential(
-            GlobalConvolution(ndf, ndf * 2, (11, 11), 2),
-            nn.BatchNorm2d(ndf * 2),
-            nn.LeakyReLU(0.2, inplace=True),
+            GlobalConvolution(dim, dim * 2, (11, 11), 2),
+            nn.BatchNorm2d(dim * 2),
+            nn.LeakyReLU(0.2, inplace=True)
         )
 
         self.conv3 = nn.Sequential(
-            GlobalConvolution(ndf * 2, ndf * 4, (9, 9), 1),
-            nn.BatchNorm2d(ndf * 4),
-            nn.LeakyReLU(0.2, inplace=True),
+            GlobalConvolution(dim * 2, dim * 4, (9, 9), 1),
+            nn.BatchNorm2d(dim * 4),
+            nn.LeakyReLU(0.2, inplace=True)
         )
 
 
         self.conv4 = nn.Sequential(
-            GlobalConvolution(ndf * 4, ndf * 8, (7, 7), 1),
-            nn.BatchNorm2d(ndf * 8),
-            nn.LeakyReLU(0.2, inplace=True),
+            GlobalConvolution(dim * 4, dim * 8, (7, 7), 1),
+            nn.BatchNorm2d(dim * 8),
+            nn.LeakyReLU(0.2, inplace=True)
         )
 
         self.conv5 = nn.Sequential(
-            nn.Conv2d(ndf * 8, ndf * 8, 4, 1, 2, bias=False),
-            nn.BatchNorm2d(ndf * 8),
-            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(dim * 8, dim * 8, 4, 1, 2, bias=False),
+            nn.BatchNorm2d(dim * 8),
+            nn.LeakyReLU(0.2, inplace=True)
         )
 
         self.conv6 = nn.Sequential(
-            nn.Conv2d(ndf * 8, ndf * 8, 3, 2, 2, bias=False),
-            nn.BatchNorm2d(ndf * 8),
-            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(dim * 8, dim * 8, 3, 2, 2, bias=False),
+            nn.BatchNorm2d(dim * 8),
+            nn.LeakyReLU(0.2, inplace=True)
         )
 
         # self._initialize_weights()
