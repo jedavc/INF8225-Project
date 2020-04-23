@@ -14,6 +14,7 @@ from architectures.NVDLMED.utils.metrics import *
 import warnings
 import argparse
 import shutil
+from architectures.NVDLMED.utils.utils import *
 from architectures.NVDLMED.utils.HierarchyCreator import create_hierarchy
 from architectures.NVDLMED.utils.constant import *
 
@@ -107,7 +108,7 @@ def run_training(args):
                 val_bar.update()
 
             val_bar.set_postfix_str(
-                "Dice 3D: {:.3f} || ET: {:.3f}, WT: {:.3f}, TC: {:.3f}"
+                "Dice 3D: {:.3f} || WT: {:.3f}, TC: {:.3f}, ET: {:.3f}"
                     .format(np.mean(dsc_val_batch), np.mean(dsc_val_batch, 0)[0], np.mean(dsc_val_batch, 0)[1], np.mean(dsc_val_batch, 0)[2])
             )
 
@@ -138,7 +139,7 @@ def run_eval(args):
 
     test_dataset = BrainTumorDataset(
         mode="test",
-        data_path="../rawdata/brats/",
+        data_path=args.root_dir,
         desired_resolution=desired_resolution,
         original_resolution=(ORIGINAL_RES_H, ORIGINAL_RES_W, ORIGINAL_RES_D),
         transform_input=transforms.Compose([Resize(factor), Normalize()]),
@@ -154,11 +155,12 @@ def run_eval(args):
     with tqdm(total=len(test_loader), ascii=True, position=0) as test_bar:
         test_bar.set_description('[Evaluation]')
 
-        for (input, target) in test_loader:
+        for (input, target, img_name) in test_loader:
             input, target = input.cuda(), target.cuda()
 
             with torch.no_grad():
                 output_gt = net(input)
+                prediction_to_nii(output_gt, target, img_name, args.root_dir + "/save/pred/")
 
                 dsc_3d, hd_3d = calculate_3d_metrics(output_gt, target)
                 dsc_test.extend(dsc_3d)
@@ -168,7 +170,7 @@ def run_eval(args):
 
         test_bar.set_postfix_str(
             "Dice: {:.3f} | HD: {:.3f}"
-                .format(np.mean(dsc_3d), np.mean(dsc_test), np.mean(hd_test))
+                .format(np.mean(dsc_test), np.mean(hd_test))
         )
 
         np.save(args.root_dir + "/save/dsc_test", dsc_test)
@@ -179,7 +181,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--data_dir', default='../rawdata/MICCAI_BraTS_2018_Data_Training', type=str)
-    parser.add_argument('--root_dir', default='../rawdata/brats', type=str)
+    parser.add_argument('--root_dir', default='../rawdata/brats-test', type=str)
     parser.add_argument('--num_workers', default=10, type=int)
     parser.add_argument('--desired_resolution_h', default=80, type=int)
     parser.add_argument('--desired_resolution_w', default=96, type=int)
@@ -206,5 +208,5 @@ if __name__ == "__main__":
     if args.train:
         run_training(args)
 
-    if args.eval:
+    if not args.eval:
         run_eval(args)

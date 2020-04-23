@@ -17,6 +17,7 @@ class BrainTumorDataset(Dataset):
                  original_resolution=(155, 240, 240),
                  transform_input=None,
                  transform_gt=None):
+        self.mode = mode
         self.data_path = os.path.join(data_path, mode)
         self.data_files = {"t1": glob.glob(self.data_path + '/*/*t1.nii.gz'),
                                "t2": glob.glob(self.data_path + '/*/*t2.nii.gz'),
@@ -50,7 +51,11 @@ class BrainTumorDataset(Dataset):
         input = self.transform_input(numpy_data[0:4])
         gt = self.transform_gt(numpy_data[-1])
 
-        return torch.from_numpy(input), torch.from_numpy(gt)
+        if self.mode == "test":
+            seg_name = data_files["seg"].replace("\\", "/").split("/")[-2]
+            return torch.from_numpy(input), torch.from_numpy(gt), seg_name
+        else:
+            return torch.from_numpy(input), torch.from_numpy(gt)
 
 
 class Resize(object):
@@ -83,8 +88,8 @@ class Labelize(object):
         pass
 
     def __call__(self, data):
-        ncr = data == 1  # Necrotic and Non-Enhancing Tumor (NCR/NET)
-        ed = data == 2  # Peritumoral Edema (ED)
-        et = data == 4  # GD-enhancing Tumor (ET)
+        wt = (data == 1) + (data == 2) + (data == 4)  # Whole tumor (NET + ED + ET)
+        tc = (data == 2) + (data == 4)   # Tumour core (ED + ET)
+        et = data == 4  # Enhancing tumor (ET)
 
-        return np.array([ncr, ed, et], dtype=np.uint8)
+        return np.array([wt, tc, et], dtype=np.uint8)

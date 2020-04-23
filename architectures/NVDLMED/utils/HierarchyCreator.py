@@ -5,7 +5,7 @@ from architectures.DANet.utils.utils import *
 
 
 def create_folders(root_dir):
-    for location in ["train", "val", "test",  "save"]:
+    for location in ["train", "val", "test",  "save/pred"]:
         os.makedirs(os.path.join(root_dir, location), exist_ok=True)
 
 
