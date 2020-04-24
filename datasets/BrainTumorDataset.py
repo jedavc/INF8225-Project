@@ -6,6 +6,7 @@ from torch.utils.data import Dataset
 from scipy.ndimage import zoom
 import glob
 import numpy as np
+from architectures.NVDLMED.utils.constant import *
 
 
 class BrainTumorDataset(Dataset):
@@ -88,8 +89,8 @@ class Labelize(object):
         pass
 
     def __call__(self, data):
-        wt = (data == 1) + (data == 2) + (data == 4)  # Whole tumor (NET + ED + ET)
-        tc = (data == 2) + (data == 4)   # Tumour core (ED + ET)
-        et = data == 4  # Enhancing tumor (ET)
+        wt = (data == MASK_NET) + (data == MASK_ED) + (data == MASK_ET)  # Whole tumor (NET + ED + ET)
+        tc = (data == MASK_NET) + (data == MASK_ET)   # Tumor core (NET + ET)
+        et = data == MASK_ET  # Enhancing tumor (ET)
 
         return np.array([wt, tc, et], dtype=np.uint8)

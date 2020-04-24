@@ -16,31 +16,15 @@ class NVDLMEDLoss(nn.Module):
 
 
 def loss_dice(pred, gt, epsilon=1e-6):
-    pred = flatten(pred)
-    gt = flatten(gt).float()
-
-    intersect = (pred * gt).sum(-1)
-    denominator = (pred * pred).sum(-1) + (gt * gt).sum(-1)
+    sum_dim = (2, 3, 4)
+    intersect = (pred * gt).sum(sum_dim)
+    denominator = (pred * pred).sum(sum_dim) + (gt * gt).sum(sum_dim)
 
     per_channel_dice = 2 * (intersect / denominator.clamp(min=epsilon))
 
-    return (1. - torch.mean(per_channel_dice))
+    return (1. - per_channel_dice).sum(1).mean()
 
 
 def loss_kl(z_mean, z_var):
 
     return torch.sum(z_var.exp() + z_mean.pow(2) - 1. - z_var)
-
-
-def flatten(tensor):
-    # number of channels
-    C = tensor.size(1)
-
-    # new axis order
-    axis_order = (1, 0) + tuple(range(2, tensor.dim()))
-
-    # Transpose: (N, C, D, H, W) -> (C, N, D, H, W)
-    transposed = tensor.permute(axis_order)
-
-    # Flatten: (C, N, D, H, W) -> (C, N * D * H * W)
-    return transposed.contiguous().view(C, -1)

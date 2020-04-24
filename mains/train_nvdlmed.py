@@ -4,7 +4,7 @@ sys.path.append("../INF8225-Project/")
 
 from architectures.NVDLMED.model.NVDLMED import *
 from datasets.BrainTumorDataset import *
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from torchvision import transforms
 from torch.optim import Adam
 from torch.optim.lr_scheduler import *
@@ -53,7 +53,7 @@ def run_training(args):
     lambda1 = lambda epoch: (1 - epoch / args.epochs) ** 0.9
     scheduler = LambdaLR(optimizer, lr_lambda=lambda1)
 
-    loss_train = []
+    loss_train, loss_dice, loss_l2, loss_kl = [], [], [], []
     dsc_train, dsc_val = [], []
     hd_train, hd_val = [], []
 
@@ -62,7 +62,7 @@ def run_training(args):
 
         # Training loop
         net.train()
-        loss_train_batch = 0
+        loss_train_batch, loss_dice_batch, loss_l2_batch, loss_kl_batch = [], [], [], []
         dsc_train_batch, hd_train_batch = [], []
         with tqdm(total=len(train_loader), ascii=True) as training_bar:
             training_bar.set_description(f'[Training] Epoch {epoch + 1}')
@@ -77,7 +77,11 @@ def run_training(args):
                 loss.backward()
                 optimizer.step()
 
-                loss_train_batch += loss.item()
+                loss_train_batch.append(loss.item())
+                loss_dice_batch.append(l_dice.item())
+                loss_l2_batch.append(l_l2.item())
+                loss_kl_batch.append(l_kl.item())
+
                 dsc_3d, hd_3d = calculate_3d_metrics(output_gt, target)
                 dsc_train_batch.extend(dsc_3d)
                 hd_train_batch.extend(hd_3d)
@@ -87,7 +91,7 @@ def run_training(args):
                         .format(loss.item(), l_dice.item(), l_l2.item(), l_kl.item()))
                 training_bar.update()
 
-            training_bar.set_postfix_str("Mean loss: {:.4f}".format(loss_train_batch / len(train_loader)))
+            training_bar.set_postfix_str("Mean loss: {:.4f}".format(np.mean(loss_train_batch)))
 
         # Validation loop
         net.eval()
@@ -120,13 +124,19 @@ def run_training(args):
         scheduler.step()
 
         # Save Statistics
-        loss_train.append(loss_train_batch / len(train_loader))
+        loss_train.append(loss_train_batch)
+        loss_dice.append(loss_dice_batch)
+        loss_l2.append(loss_l2_batch)
+        loss_kl.append(loss_kl_batch)
         dsc_train.append(dsc_train_batch)
         hd_train.append(hd_train_batch)
         dsc_val.append(dsc_val_batch)
         hd_val.append(hd_val_batch)
 
         np.save(args.root_dir + "/save/loss", loss_train)
+        np.save(args.root_dir + "/save/loss_dice", loss_dice)
+        np.save(args.root_dir + "/save/loss_l2", loss_l2)
+        np.save(args.root_dir + "/save/loss_kl", loss_kl)
         np.save(args.root_dir + "/save/dsc_train", dsc_train)
         np.save(args.root_dir + "/save/hd_train", hd_train)
         np.save(args.root_dir + "/save/dsc_val", dsc_val)
@@ -160,7 +170,7 @@ def run_eval(args):
 
             with torch.no_grad():
                 output_gt = net(input)
-                prediction_to_nii(output_gt, target, img_name, args.root_dir + "/save/pred/")
+                prediction_to_nii(output_gt, target, input, img_name, args.root_dir + "/save/pred/")
 
                 dsc_3d, hd_3d = calculate_3d_metrics(output_gt, target)
                 dsc_test.extend(dsc_3d)
@@ -181,7 +191,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--data_dir', default='../rawdata/MICCAI_BraTS_2018_Data_Training', type=str)
-    parser.add_argument('--root_dir', default='../rawdata/brats-test', type=str)
+    parser.add_argument('--root_dir', default='../rawdata/brats', type=str)
     parser.add_argument('--num_workers', default=10, type=int)
     parser.add_argument('--desired_resolution_h', default=80, type=int)
     parser.add_argument('--desired_resolution_w', default=96, type=int)
@@ -189,7 +199,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', default=1, type=int)
     parser.add_argument('--epochs', default=150, type=int)
     parser.add_argument('--lr', default=1e-4, type=float)
-    parser.add_argument('--train', default=True, action='store_true')
+    parser.add_argument('--train', default=False, action='store_true')
     parser.add_argument('--eval', default=False, action='store_true')
     parser.add_argument('--create_hierarchy', default=False, action='store_true')
     parser.add_argument('--checkpoint_path', default='../rawdata/brats/save/net.pth', type=str)
@@ -208,5 +218,5 @@ if __name__ == "__main__":
     if args.train:
         run_training(args)
 
-    if not args.eval:
+    if args.eval:
         run_eval(args)
