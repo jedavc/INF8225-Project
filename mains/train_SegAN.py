@@ -5,6 +5,7 @@ import torch
 import torchvision.utils as vutils
 from torch.optim import Adam
 import matplotlib.pyplot as plt
+
 output_path = "./outputs"
 data_path = "./datasets/data"
 num_epoch = 300
@@ -14,6 +15,7 @@ batch_size = 12
 k_decay = 0.9
 k = 1
 
+
 def dice_score_and_jaccard(predicted, target):
     predicted_array = predicted.cpu().numpy()
     target_array = target.cpu().numpy()
@@ -21,14 +23,15 @@ def dice_score_and_jaccard(predicted, target):
     for x in range(predicted.size()[0]):
         jaccard = np.sum(predicted_array[x][target_array[x] == 1]) / float(
             np.sum(predicted_array[x]) + np.sum(target_array[x]) - np.sum(predicted_array[x][target_array[x] == 1]))
-        dice = np.sum(predicted_array[x][target_array[x] == 1]) * 2 / float(np.sum(predicted_array[x]) + np.sum(target_array[x]))
+        dice = np.sum(predicted_array[x][target_array[x] == 1]) * 2 / float(
+            np.sum(predicted_array[x]) + np.sum(target_array[x]))
         Jaccard.append(jaccard)
         Dice.append(dice)
 
     return np.mean(Dice, axis=0), np.mean(Jaccard, axis=0)
 
-def multi_scale_loss(input_clone, target, output, Critic):
 
+def multi_scale_loss(input_clone, target, output, Critic):
     output_masked = mask_image(input_clone, output)
     predicted_C = Critic(output_masked)
 
@@ -36,6 +39,8 @@ def multi_scale_loss(input_clone, target, output, Critic):
     target_C = Critic(target_masked)
 
     return torch.mean(torch.abs(predicted_C - target_C))
+
+
 def dice_loss(predicted, target):
     num = predicted * target
     num = torch.sum(num, dim=2)
@@ -49,16 +54,18 @@ def dice_loss(predicted, target):
     den2 = torch.sum(den2, dim=2)
     den2 = torch.sum(den2, dim=2)
 
-    dice = 2 * (num/(den1+den2))
+    dice = 2 * (num / (den1 + den2))
 
-    dice_total = torch.sum(dice)/dice.size(0)
+    dice_total = torch.sum(dice) / dice.size(0)
 
     return dice_total
+
 
 def update_optimizer(lr, Segmentor_params, Critic_params):
     optimizer_seg = Adam(Segmentor_params, lr=lr, betas=(0.5, 0.999))
     optimizer_crit = Adam(Critic_params, lr=lr, betas=(0.5, 0.999))
     return optimizer_seg, optimizer_crit
+
 
 def save_checkpoints(input, label, predictions, output_path, epoch, is_train):
     id = ""
@@ -74,11 +81,13 @@ def save_checkpoints(input, label, predictions, output_path, epoch, is_train):
                       '%s/result%s_%d.png' % (output_path, id, epoch),
                       normalize=True)
 
+
 def mask_image(input, mask):
     masked_image = input.clone()
     for d in range(input.shape[1]):
         masked_image[:, d, :, :] = (input[:, d, :, :].unsqueeze(1) * mask).squeeze()
     return masked_image.cuda()
+
 
 def eval(model, data_loader, output_path, epoch=0):
     model.eval()
@@ -94,7 +103,7 @@ def eval(model, data_loader, output_path, epoch=0):
             predictions[predictions < 0.4] = 0
             predictions[predictions >= 0.4] = 1
             dice_loss_eval += dice_loss(predictions, label)
-            correct += (predictions == label).sum().item()/label.nelement()
+            correct += (predictions == label).sum().item() / label.nelement()
             dice_mean, jaccard_mean = dice_score_and_jaccard(predictions, label)
             Dice.append(dice_mean)
             Jaccard.append(jaccard_mean)
@@ -102,7 +111,7 @@ def eval(model, data_loader, output_path, epoch=0):
         if epoch % 20 == 0:
             save_checkpoints(data, label, predictions, output_path, epoch, is_train=False)
 
-        dice_loss_eval = dice_loss_eval/len(data_loader)
+        dice_loss_eval = dice_loss_eval / len(data_loader)
         dice_score = np.array(Dice).mean()
         jaccard_index = np.array(Jaccard).mean()
         print("Dice_loss : {}".format(dice_loss_eval))
@@ -111,17 +120,16 @@ def eval(model, data_loader, output_path, epoch=0):
     return correct / len(data_loader), dice_score, jaccard_index
 
 
-
 if __name__ == "__main__":
 
     ## build models
     Segmentor = Segmentor().cuda()
     Critic = Critic().cuda()
 
-    #set optimizers
+    # set optimizers
     optimizer_seg, optimizer_crit = update_optimizer(lr, Segmentor.parameters(), Critic.parameters())
 
-    #Init training
+    # Init training
     Segmentor.train()
     Critic.train()
     train_loader = loader(Dataset_train(data_path), batch_size)
@@ -142,12 +150,12 @@ if __name__ == "__main__":
         loss_C_train = 0
         for batch_idx, sample in enumerate(train_loader):
 
-            #Train Critic
+            # Train Critic
             Critic.zero_grad()
             input, target = sample[0].cuda(), sample[1].cuda()
 
             output = Segmentor(input)
-            output = torch.sigmoid(output*k)
+            output = torch.sigmoid(output * k)
             output = output.detach()
             input_clone = input.clone()
 
@@ -158,18 +166,18 @@ if __name__ == "__main__":
             loss_C.backward()
             optimizer_crit.step()
 
-            #clip parameters in D
+            # clip parameters in D
             for p in Critic.parameters():
                 p.data.clamp_(-0.05, 0.05)
 
-            #train Segmentor
+            # train Segmentor
             Segmentor.zero_grad()
             output = Segmentor(input)
-            output = torch.sigmoid(output*k)
+            output = torch.sigmoid(output * k)
 
             loss_S = multi_scale_loss(input_clone, target, output, Critic)
             loss_S_train += loss_S.item()
-            loss_dice_train = 1 - 1*dice_loss(output, target)
+            loss_dice_train = 1 - 1 * dice_loss(output, target)
 
             print("Loss dice: " + str(loss_dice_train.item()))
             loss_S_dice = loss_dice_train + loss_S
@@ -180,8 +188,7 @@ if __name__ == "__main__":
             # Accuracy
             output[output < 0.4] = 0
             output[output >= 0.4] = 1
-            correct_train += (output == target).sum().item()/target.nelement()
-
+            correct_train += (output == target).sum().item() / target.nelement()
 
         loss_C_train = loss_C_train / len(train_loader)
         losses_C_train.append(loss_C_train)
@@ -219,9 +226,9 @@ if __name__ == "__main__":
 
         # Decrease learning rate and update
         if epoch % 25 == 0:
-            lr = lr*lr_decay
+            lr = lr * lr_decay
             if k > 0.3:
-                k = k*k_decay
+                k = k * k_decay
             if lr <= 0.00000001:
                 lr = 0.00000001
             optimizer_seg, optimizer_crit = update_optimizer(lr, Segmentor.parameters(), Critic.parameters())
@@ -266,4 +273,3 @@ if __name__ == "__main__":
     plt.legend(loc="lower right")
     plt.savefig('./plots/accuracy.png')
     plt.show()
-

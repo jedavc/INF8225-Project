@@ -6,6 +6,7 @@ from architectures.SegAN.model.GlobalConvolution import GlobalConvolution
 channel_dim = 3
 dim = 64
 
+
 class Critic(nn.Module):
     def __init__(self):
         super(Critic, self).__init__()
@@ -28,7 +29,6 @@ class Critic(nn.Module):
             nn.LeakyReLU(0.2, inplace=True)
         )
 
-
         self.conv4 = nn.Sequential(
             GlobalConvolution(dim * 4, dim * 8, (7, 7), 1),
             nn.BatchNorm2d(dim * 8),
@@ -47,7 +47,7 @@ class Critic(nn.Module):
             nn.LeakyReLU(0.2, inplace=True)
         )
 
-        # self._initialize_weights()
+        # init params
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels

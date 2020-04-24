@@ -1,4 +1,3 @@
-
 import torch.nn as nn
 from math import sqrt
 import torch
@@ -9,6 +8,8 @@ from architectures.SegAN.model.ResidualDecoderBlock import ResidualDecoderBlock
 
 channels = 3
 dim = 64
+
+
 class Segmentor(nn.Module):
     def __init__(self):
         super(Segmentor, self).__init__()
@@ -72,18 +73,21 @@ class Segmentor(nn.Module):
             nn.ReLU(True),
         )
         self.deconv3_res = ResidualDecoderBlock(dim * 4)
+
         self.deconv4 = nn.Sequential(
             GlobalConvolution(dim * 4 * 2, dim * 2, (9, 9)),
             nn.BatchNorm2d(dim * 2),
             nn.ReLU(True),
         )
         self.deconv4_res = ResidualDecoderBlock(dim * 2)
+
         self.deconv5 = nn.Sequential(
             GlobalConvolution(dim * 2 * 2, dim, (9, 9)),
             nn.BatchNorm2d(dim),
             nn.ReLU(True),
         )
         self.deconv5_res = ResidualDecoderBlock(dim)
+
         self.deconv6 = nn.Sequential(
             GlobalConvolution(dim * 2, dim, (11, 11)),
             nn.BatchNorm2d(dim),
@@ -94,7 +98,7 @@ class Segmentor(nn.Module):
             nn.Conv2d(dim, 1, 5, 1, 2, bias=False),
         )
 
-
+        # init params
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels

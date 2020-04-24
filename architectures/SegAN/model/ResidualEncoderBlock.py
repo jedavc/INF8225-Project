@@ -1,20 +1,21 @@
 import torch.nn as nn
 from math import sqrt
 
+
 class ResidualEncoderBlock(nn.Module):
-    def __init__(self, indim):
+    def __init__(self, dim):
         super(ResidualEncoderBlock, self).__init__()
-        self.conv1 = nn.Conv2d(indim, indim * 2, kernel_size=1, bias=False)
-        self.batch_norm1 = nn.BatchNorm2d(indim * 2)
+        self.conv1 = nn.Conv2d(dim, dim * 2, kernel_size=1, bias=False)
+        self.batch_norm1 = nn.BatchNorm2d(dim * 2)
         self.relu1 = nn.LeakyReLU(0.2, inplace=True)
-        self.conv2 = nn.Conv2d(indim * 2, indim * 2, kernel_size=3, padding=1, bias=False)
-        self.batch_norm2 = nn.BatchNorm2d(indim * 2)
+        self.conv2 = nn.Conv2d(dim * 2, dim * 2, kernel_size=3, padding=1, bias=False)
+        self.batch_norm2 = nn.BatchNorm2d(dim * 2)
         self.relu2 = nn.LeakyReLU(0.2, inplace=True)
-        self.conv3 = nn.Conv2d(indim * 2, indim, kernel_size=1, bias=False)
-        self.batch_norm3 = nn.BatchNorm2d(indim)
+        self.conv3 = nn.Conv2d(dim * 2, dim, kernel_size=1, bias=False)
+        self.batch_norm3 = nn.BatchNorm2d(dim)
         self.relu3 = nn.LeakyReLU(0.2, inplace=True)
 
-        #init params
+        # init params
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels

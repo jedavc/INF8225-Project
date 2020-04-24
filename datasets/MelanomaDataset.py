@@ -6,6 +6,7 @@ import torch
 from torchvision.transforms import *
 import random
 
+
 class LabelToTensor(object):
 
     def __init__(self):
@@ -17,10 +18,13 @@ class LabelToTensor(object):
         tensor[tensor == self.before] = self.after
         return tensor
 
+
 class Dataset_train(torch.utils.data.Dataset):
 
     def __init__(self, path):
+        # Initial image size
         self.size = (180, 135)
+        # Data directory path
         self.path = path
 
         self.img_resize = Compose([
@@ -32,16 +36,21 @@ class Dataset_train(torch.utils.data.Dataset):
         ])
         self.img_transform = Compose([
             ToTensor(),
+            # Using mean and std of Imagenet
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
         self.label_transform = Compose([
             LabelToTensor()
         ])
 
-        #sort file names
+        # Order files
         self.input_paths = sorted(glob(os.path.join(self.path, '{}/*.jpg'.format("ISIC-2017_Training_Data"))))
-        self.label_paths = sorted(glob(os.path.join(self.path, '{}/*.png'.format("ISIC-2017_Training_Part1_GroundTruth"))))
+        self.label_paths = sorted(
+            glob(os.path.join(self.path, '{}/*.png'.format("ISIC-2017_Training_Part1_GroundTruth"))))
         self.name = os.path.basename(path)
+
+    def __len__(self):
+        return len(self.input_paths)
 
     def __getitem__(self, index):
         image = Image.open(self.input_paths[index]).convert('RGB')
@@ -50,16 +59,15 @@ class Dataset_train(torch.utils.data.Dataset):
         image = self.img_resize(image)
         label = self.label_resize(label)
 
-        #flip images randomly
+        # flip images randomly
         image, label = self.rand_flip_image(image, label)
-        #crop image to 128 x 128 dims
+        # crop image to 128 x 128 dims
         image, label = self.rand_crop_image(image, label)
 
         image = self.img_transform(image)
         label = self.label_transform(label)
         return image, label
 
-    #flip images
     def rand_flip_image(self, image, label):
 
         if random.random() > 0.5:
@@ -71,25 +79,23 @@ class Dataset_train(torch.utils.data.Dataset):
 
         return image, label
 
-    # crop image to 128 x 128 dims
     def rand_crop_image(self, image, label):
 
-        w, h = image.size
-        th, tw = (128, 128)
-        x1 = random.randint(0, w - tw)
-        y1 = random.randint(0, h - th)
-        if not (w == tw and h == th):
+        width, height = image.size
+        new_height, new_width = (128, 128)
+
+        x1 = random.randint(0, width - new_width)
+        y1 = random.randint(0, height - new_height)
+
+        if not (width == new_width and height == new_height):
             if random.random() > 0.5:
                 image = image.resize((128, 128), Image.BILINEAR)
                 label = label.resize((128, 128), Image.NEAREST)
             else:
-                image = image.crop((x1, y1, x1 + tw, y1 + th))
-                label = label.crop((x1, y1, x1 + tw, y1 + th))
+                image = image.crop((x1, y1, x1 + new_width, y1 + new_height))
+                label = label.crop((x1, y1, x1 + new_width, y1 + new_height))
 
         return image, label
-
-    def __len__(self):
-        return len(self.input_paths)
 
 
 class Dataset_val_test(torch.utils.data.Dataset):
@@ -101,9 +107,9 @@ class Dataset_val_test(torch.utils.data.Dataset):
         self.img_transform = Compose([
             Resize(self.size, Image.BILINEAR),
             ToTensor(),
+            # Using mean and std of Imagenet
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
-
         self.label_transform = Compose([
             Resize(self.size, Image.NEAREST),
             LabelToTensor()
@@ -111,10 +117,12 @@ class Dataset_val_test(torch.utils.data.Dataset):
 
         if isTest:
             self.input_path = sorted(glob(os.path.join(self.data_dir, '{}/*.jpg'.format("ISIC-2017_Test_v2_Data"))))
-            self.label_path = sorted(glob(os.path.join(self.data_dir, '{}/*.png'.format("ISIC-2017_Test_v2_Part1_GroundTruth"))))
+            self.label_path = sorted(
+                glob(os.path.join(self.data_dir, '{}/*.png'.format("ISIC-2017_Test_v2_Part1_GroundTruth"))))
         if not isTest:
             self.input_path = sorted(glob(os.path.join(self.data_dir, '{}/*.jpg'.format("ISIC-2017_Validation_Data"))))
-            self.label_path = sorted(glob(os.path.join(self.data_dir, '{}/*.png'.format("ISIC-2017_Validation_Part1_GroundTruth"))))
+            self.label_path = sorted(
+                glob(os.path.join(self.data_dir, '{}/*.png'.format("ISIC-2017_Validation_Part1_GroundTruth"))))
 
         self.name = os.path.basename(data_dir)
 
@@ -129,11 +137,11 @@ class Dataset_val_test(torch.utils.data.Dataset):
         return len(self.input_path)
 
 
-def loader(dataset, batch_size, num_workers=4, shuffle=True):
-    input_images = dataset
-    input_loader = torch.utils.data.DataLoader(dataset=input_images,
-                                                batch_size=batch_size,
-                                                shuffle=shuffle,
-                                                num_workers=num_workers,
-                                                drop_last=True)
-    return input_loader
+def loader(dataset, batch_size):
+    dataset_images = dataset
+    data_loader = torch.utils.data.DataLoader(dataset=dataset_images,
+                                              batch_size=batch_size,
+                                              shuffle=True,
+                                              num_workers=4,
+                                              drop_last=True)
+    return data_loader

@@ -1,17 +1,22 @@
 import torch.nn as nn
 from math import sqrt
 
+
 class GlobalConvolution(nn.Module):
     def __init__(self, in_dim, out_dim, kernel_size, stride=1):
         super(GlobalConvolution, self).__init__()
-        pad0 = (kernel_size[0] - 1) // 2
-        pad1 = (kernel_size[1] - 1) // 2
+        kernel_1 = kernel_size[0]
+        kernel_2 = kernel_size[1]
 
-        self.conv_l1 = nn.Conv2d(in_dim, out_dim, kernel_size=(kernel_size[0], 1), padding=(pad0, 0), stride=stride)
-        self.conv_l2 = nn.Conv2d(out_dim, out_dim, kernel_size=(1, kernel_size[1]), padding=(0, pad1), stride=stride)
-        self.conv_r1 = nn.Conv2d(in_dim, out_dim, kernel_size=(1, kernel_size[1]), padding=(0, pad1), stride=stride)
-        self.conv_r2 = nn.Conv2d(out_dim, out_dim, kernel_size=(kernel_size[0], 1), padding=(pad0, 0), stride=stride)
+        padding_1 = (kernel_1 - 1) // 2
+        padding_2 = (kernel_2 - 1) // 2
 
+        self.conv_1 = nn.Conv2d(in_dim, out_dim, kernel_size=(kernel_1, 1), padding=(padding_1, 0), stride=stride)
+        self.conv_2 = nn.Conv2d(out_dim, out_dim, kernel_size=(1, kernel_2), padding=(0, padding_2), stride=stride)
+        self.conv_3 = nn.Conv2d(in_dim, out_dim, kernel_size=(1, kernel_2), padding=(0, padding_2), stride=stride)
+        self.conv_4 = nn.Conv2d(out_dim, out_dim, kernel_size=(kernel_1, 1), padding=(padding_1, 0), stride=stride)
+
+        # init params
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -23,9 +28,10 @@ class GlobalConvolution(nn.Module):
                 m.bias.data.fill_(0)
 
     def forward(self, x):
-        x_l = self.conv_l1(x)
-        x_l = self.conv_l2(x_l)
-        x_r = self.conv_r1(x)
-        x_r = self.conv_r2(x_r)
+        x_1 = self.conv_1(x)
+        x_1 = self.conv_2(x_1)
 
-        return x_l + x_r
+        x_2 = self.conv_3(x)
+        x_2 = self.conv_4(x_2)
+
+        return x_1 + x_2
