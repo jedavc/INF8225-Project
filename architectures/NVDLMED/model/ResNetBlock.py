@@ -1,24 +1,20 @@
 import torch
 from torch import nn
-from architectures.NVDLMED.model.GroupNorm import *
 
 
 class ResNetBlock(nn.Module):
-    def __init__(self, in_channel, out_channel):
+    def __init__(self, in_channel):
         super(ResNetBlock, self).__init__()
 
-        self.in_channel = in_channel
-        self.out_channel = out_channel
-
-        self.skip_connection = nn.Conv3d(in_channels=in_channel, out_channels=out_channel, kernel_size=1, stride=1)
+        self.skip_connection = nn.Conv3d(in_channels=in_channel, out_channels=in_channel, kernel_size=(3, 3, 3), stride=1, padding=1)
 
         self.direct_connection = nn.Sequential(
             nn.GroupNorm(8, in_channel),
             nn.ReLU(),
-            nn.Conv3d(in_channels=in_channel, out_channels=out_channel, kernel_size=(3, 3, 3), stride=1, padding=1),
-            nn.GroupNorm(8, out_channel),
+            nn.Conv3d(in_channels=in_channel, out_channels=in_channel, kernel_size=(3, 3, 3), stride=1, padding=1),
+            nn.GroupNorm(8, in_channel),
             nn.ReLU(),
-            nn.Conv3d(in_channels=out_channel, out_channels=out_channel, kernel_size=(3, 3, 3), stride=1, padding=1)
+            nn.Conv3d(in_channels=in_channel, out_channels=in_channel, kernel_size=(3, 3, 3), stride=1, padding=1)
         )
 
     def forward(self, x):
@@ -28,4 +24,3 @@ class ResNetBlock(nn.Module):
         out = skip_connection_out + direct_out
 
         return out
-
