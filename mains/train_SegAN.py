@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 output_path = "./outputs"
 data_path = "./datasets/data"
-num_epoch = 300
+num_epoch = 200
 lr = 0.003
 lr_decay = 0.5
 batch_size = 12
@@ -21,9 +21,9 @@ def dice_score_and_jaccard(predicted, target):
     target_array = target.cpu().numpy()
     Jaccard, Dice = [], []
     for x in range(predicted.size()[0]):
-        jaccard = np.sum(predicted_array[x][target_array[x] == 1]) / float(
+        jaccard = np.sum(predicted_array[x][target_array[x] == 1]) / (
             np.sum(predicted_array[x]) + np.sum(target_array[x]) - np.sum(predicted_array[x][target_array[x] == 1]))
-        dice = np.sum(predicted_array[x][target_array[x] == 1]) * 2 / float(
+        dice = np.sum(predicted_array[x][target_array[x] == 1]) * 2 / (
             np.sum(predicted_array[x]) + np.sum(target_array[x]))
         Jaccard.append(jaccard)
         Dice.append(dice)
