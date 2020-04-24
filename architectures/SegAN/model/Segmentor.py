@@ -128,6 +128,7 @@ class Segmentor(nn.Module):
         enc6 = self.conv6(enc5)
 
         dec1 = self.deconv1(enc6)
+        dec1 = self.deconv1_res(dec1)
         dec1 = torch.cat([enc5, dec1], 1)
         dec1 = F.interpolate(dec1, size=enc4.size()[2:], mode='bilinear')
         dec2 = self.deconv2(dec1)
