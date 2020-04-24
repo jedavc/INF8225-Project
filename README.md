@@ -1,4 +1,6 @@
 # INF8225-Project
-## Brain tumor segmentation (on BraTS 2018 dataset) using differents architecture from previous BraTS challenge years.
+## Exploration de diverses méthodes de segmentation d'images médicales.
+### Plusieurs ensembles de données sont utilisés soient BraTS-18, ISIC-2017, DRIVE et CHAOS.
+### Les modèles explorés sont un encodeur automatique régularisé, un SegAN, une dérivée de U-Net (BCDU-Net) et un modèle multi-scale self-guided. Chacun de modèle a un fichier main personnalisé.
 
 
