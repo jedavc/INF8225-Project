@@ -61,28 +61,28 @@ class Segmentor(nn.Module):
         self.deconv1_res = ResidualDecoderBlock(dim * 16)
 
         self.deconv2 = nn.Sequential(
-            GlobalConvolution(dim * 16 * 2, dim * 8, (7, 7)),
+            GlobalConvolution(dim * 32, dim * 8, (7, 7)),
             nn.BatchNorm2d(dim * 8),
             nn.ReLU(True),
         )
         self.deconv2_res = ResidualDecoderBlock(dim * 8)
 
         self.deconv3 = nn.Sequential(
-            GlobalConvolution(dim * 8 * 2, dim * 4, (7, 7)),
+            GlobalConvolution(dim * 16, dim * 4, (7, 7)),
             nn.BatchNorm2d(dim * 4),
             nn.ReLU(True),
         )
         self.deconv3_res = ResidualDecoderBlock(dim * 4)
 
         self.deconv4 = nn.Sequential(
-            GlobalConvolution(dim * 4 * 2, dim * 2, (9, 9)),
+            GlobalConvolution(dim * 8, dim * 2, (9, 9)),
             nn.BatchNorm2d(dim * 2),
             nn.ReLU(True),
         )
         self.deconv4_res = ResidualDecoderBlock(dim * 2)
 
         self.deconv5 = nn.Sequential(
-            GlobalConvolution(dim * 2 * 2, dim, (9, 9)),
+            GlobalConvolution(dim * 4, dim, (9, 9)),
             nn.BatchNorm2d(dim),
             nn.ReLU(True),
         )

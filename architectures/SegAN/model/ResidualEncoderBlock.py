@@ -7,13 +7,13 @@ class ResidualEncoderBlock(nn.Module):
         super(ResidualEncoderBlock, self).__init__()
         self.conv1 = nn.Conv2d(dim, dim * 2, kernel_size=1, bias=False)
         self.batch_norm1 = nn.BatchNorm2d(dim * 2)
-        self.relu1 = nn.LeakyReLU(0.2, inplace=True)
+        self.act1 = nn.LeakyReLU(0.2, inplace=True)
         self.conv2 = nn.Conv2d(dim * 2, dim * 2, kernel_size=3, padding=1, bias=False)
         self.batch_norm2 = nn.BatchNorm2d(dim * 2)
-        self.relu2 = nn.LeakyReLU(0.2, inplace=True)
+        self.act2 = nn.LeakyReLU(0.2, inplace=True)
         self.conv3 = nn.Conv2d(dim * 2, dim, kernel_size=1, bias=False)
         self.batch_norm3 = nn.BatchNorm2d(dim)
-        self.relu3 = nn.LeakyReLU(0.2, inplace=True)
+        self.act3 = nn.LeakyReLU(0.2, inplace=True)
 
         # init params
         for m in self.modules():
@@ -28,13 +28,13 @@ class ResidualEncoderBlock(nn.Module):
 
     def forward(self, x):
         output = self.conv1(x)
-        output = self.relu1(output)
+        output = self.act1(output)
         output = self.batch_norm1(output)
         output = self.conv2(output)
-        output = self.relu2(output)
+        output = self.act2(output)
         output = self.batch_norm2(output)
         output = self.conv3(output)
-        output = self.relu3(output)
+        output = self.act3(output)
         output = self.batch_norm3(output)
 
         return x + output
