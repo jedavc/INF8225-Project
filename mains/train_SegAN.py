@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 output_path = "./outputs"
 data_path = "./datasets/data"
-num_epoch = 200
+num_epoch = 300
 lr = 0.003
 lr_decay = 0.5
 batch_size = 12
