@@ -4,7 +4,6 @@
 attrs=19.3.0=py_0
 backcall=0.1.0=py37_0
 blas=1.0=mkl
-bleach=3.1.0=py37_0
 ca-certificates=2020.4.5.1=hecc5488_0
 certifi=2020.4.5.1=py37hc8dfbb8_0
 cffi=1.14.0=py37h7a1dbc1_0
