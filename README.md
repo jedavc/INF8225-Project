@@ -8,7 +8,7 @@ Implémentation et pré-traitement inspiré de https://github.com/rezazad68/BCDU
 Il faut créer les répertoires "BCDU_models", "Preprocessed_Images" et "Tests" dans le répertoire "BCDU-net" pour avoir l'ordre suivant:
 architectures/BCDU_net/Preprocessed_Images/... Aussi il faut ajouter le répertoire "Patches" dans "Preprocessed_Images".
 
-Pour démarrer l'entraînement, allez dans le fichier "INF8225-Project" et ouvrez une console à partir de cette destination. Tapez la commande "python mains\train_bcdunet --train --eval" pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suite. 
+Pour démarrer l'entraînement, allez dans le fichier "INF8225-Project" et ouvrez une console à partir de cette destination. Tapez la commande "python mains\train_bcdunet.py --train --eval" pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suite. 
 
 ### Pour Autoencoder 3D:
 Il est possible de downloader les données d'entrainment sur le lien: http://academictorrents.com/details/a9e2741587d42ef6139aa474a95858a17952b3a5. Ensuite extarire les données dans le dossier rawdata/.
