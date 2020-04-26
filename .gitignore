@@ -1,5 +1,6 @@
 # Data Folder
 rawdata/
+!rawdata/*.md
 Results/
 
 # Byte-compiled / optimized / DLL files
