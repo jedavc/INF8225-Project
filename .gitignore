@@ -1,6 +1,6 @@
 # Data Folder
 rawdata/
-!rawdata/*.md
+!rawdata/README.md
 Results/
 
 # Byte-compiled / optimized / DLL files
