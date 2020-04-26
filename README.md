@@ -10,7 +10,7 @@ architectures/BCDU_net/Preprocessed_Images/... Aussi il faut ajouter le réperto
 
 Pour démarrer l'entraînement, allez dans le fichier "INF8225-Project" et ouvrez une console à partir de cette destination. Tapez la commande:
 ```python
-python mains\train_bcdunet.py --train --eval
+python mains/train_bcdunet.py --train --eval
 ```
 pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suite. 
 
@@ -19,7 +19,7 @@ Il est possible de downloader les données d'entrainment sur le lien: http://aca
 
 Pour démarrer l'entraînement, allez dans le fichier "INF8225-Project" et ouvrez une console à partir de cette destination. Tapez la commande:
 ```python
-python mains\train_nvdlmed.py --create_hierarchy --train --eval
+python mains/train_nvdlmed.py --create_hierarchy --train --eval
 ```
 pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suite (La commande --create_hierarchy va créer les dossiers nécessaires pour l'utilisation du modèle).
 
@@ -28,7 +28,7 @@ Il est possible de downloader les données d'entrainment sur le lien: https://ze
 
 Pour démarrer l'entraînement, allez dans le fichier "INF8225-Project" et ouvrez une console à partir de cette destination. Tapez la commande:
 ```python
-python mains\train_danet.py --create_hierarchy --train --eval
+python mains/train_danet.py --create_hierarchy --train --eval
 ```
 pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suite (La commande --create_hierarchy va créer les dossiers nécessaires pour l'utilisation du modèle).
 
@@ -42,7 +42,7 @@ Ensuite, extraire les données et les mettre dans un dossier nommé datasets/dat
 
 Pour démarrer l'entraînement, allez dans le fichier "INF8225-Project" et ouvrez une console à partir de cette destination. Tapez la commande:
 ```python
-python mains\train_segan.py
+python mains/train_segan.py
 ```
 pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suite. 
 
