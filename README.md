@@ -9,8 +9,8 @@ Il faut créer les répertoires "BCDU_models", "Preprocessed_Images" et "Tests" 
 architectures/BCDU_net/Preprocessed_Images/... Aussi il faut ajouter le répertoire "Patches" dans "Preprocessed_Images".
 
 Pour démarrer l'entraînement, allez dans le fichier "INF8225-Project" et ouvrez une console à partir de cette destination. Tapez la commande:
-```python
-python mains\train_bcdunet.py --train --eval
+```
+python mains/train_bcdunet.py --train --eval
 ```
 pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suite. 
 
@@ -18,8 +18,8 @@ pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suit
 Il est possible de downloader les données d'entrainment sur le lien: http://academictorrents.com/details/a9e2741587d42ef6139aa474a95858a17952b3a5. Ensuite extraire les données dans le dossier rawdata/.
 
 Pour démarrer l'entraînement, allez dans le fichier "INF8225-Project" et ouvrez une console à partir de cette destination. Tapez la commande:
-```python
-python mains\train_nvdlmed.py --create_hierarchy --train --eval
+```
+python mains/train_nvdlmed.py --create_hierarchy --train --eval
 ```
 pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suite (La commande --create_hierarchy va créer les dossiers nécessaires pour l'utilisation du modèle).
 
@@ -27,8 +27,8 @@ pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suit
 Il est possible de downloader les données d'entrainment sur le lien: https://zenodo.org/record/3431873#.XqTWaGhKiUk. Ensuite extraire les données dans le dossier rawdata/.
 
 Pour démarrer l'entraînement, allez dans le fichier "INF8225-Project" et ouvrez une console à partir de cette destination. Tapez la commande:
-```python
-python mains\train_danet.py --create_hierarchy --train --eval
+```
+python mains/train_danet.py --create_hierarchy --train --eval
 ```
 pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suite (La commande --create_hierarchy va créer les dossiers nécessaires pour l'utilisation du modèle).
 
@@ -41,8 +41,8 @@ Il est possible de downloader les données d'entraînement, de validation et de 
 Ensuite, extraire les données et les mettre dans un dossier nommé datasets/data/.
 
 Pour démarrer l'entraînement, allez dans le fichier "INF8225-Project" et ouvrez une console à partir de cette destination. Tapez la commande:
-```python
-python mains\train_segan.py
+```
+python mains/train_segan.py
 ```
 pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suite. 
 
