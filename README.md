@@ -4,7 +4,7 @@
 ### Les modèles explorés sont un encodeur automatique régularisé, un SegAN, une dérivée de U-Net (BCDU-Net) et un modèle multi-scale self-guided. Chacun de ces modèles a un fichier main personnalisé.
 
 ### Pour BCDU-Net:
-Implémentation et pré-traitement inspiré de https://github.com/rezazad68/BCDU-Net. Voici les répertoires qu'il faut créer pour rouler le code. 
+Implémentation et pré-traitement inspiré de https://github.com/rezazad68/BCDU-Net. Les données peuvent être obtenue à travers le lien suivant: https://drive.google.com/file/d/17wVfELqgwbp4Q02GD247jJyjq6lwB0l6/view. Assurez vous que le fichier soit dans le répertoire rawdata\ et que celui-ci se nomme DRIVE. Voici les répertoires qu'il faut créer pour rouler le code. 
 Il faut créer les répertoires "BCDU_models", "Preprocessed_Images" et "Tests" dans le répertoire "BCDU-net" pour avoir l'ordre suivant:
 architectures/BCDU_net/Preprocessed_Images/... Aussi il faut ajouter le répertoire "Patches" dans "Preprocessed_Images".
 
