@@ -11,11 +11,24 @@ architectures/BCDU_net/Preprocessed_Images/... Aussi il faut ajouter le réperto
 Pour démarrer l'entraînement, allez dans le fichier "INF8225-Project" et ouvrez une console à partir de cette destination. Tapez la commande "python mains\train_bcdunet --train --eval" pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suite. 
 
 ### Pour Autoencoder 3D:
-Il est possible de downloader les données d'entrainment sur le lien: http://academictorrents.com/details/a9e2741587d42ef6139aa474a95858a17952b3a5. Ensuite extarire les données dans le dossier rawdata/.
+Il est possible de downloader les données d'entrainment sur le lien: http://academictorrents.com/details/a9e2741587d42ef6139aa474a95858a17952b3a5. Ensuite extraire les données dans le dossier rawdata/.
 
 Pour démarrer l'entraînement, allez dans le fichier "INF8225-Project" et ouvrez une console à partir de cette destination. Tapez la commande "python mains\train_nvdlmed.py --create_hierarchy --train --eval" pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suite (La commande --create_hierarchy va créer les dossiers nécessaires pour l'utilisation du modèle).
 
 ### Pour MS-Dual-Guided:
-Il est possible de downloader les données d'entrainment sur le lien: https://zenodo.org/record/3431873#.XqTWaGhKiUk. Ensuite extarire les données dans le dossier rawdata/.
+Il est possible de downloader les données d'entrainment sur le lien: https://zenodo.org/record/3431873#.XqTWaGhKiUk. Ensuite extraire les données dans le dossier rawdata/.
 
 Pour démarrer l'entraînement, allez dans le fichier "INF8225-Project" et ouvrez une console à partir de cette destination. Tapez la commande "python mains\train_danet.py --create_hierarchy --train --eval" pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suite (La commande --create_hierarchy va créer les dossiers nécessaires pour l'utilisation du modèle).
+
+### Pour SegAN: 
+Il est possible de downloader les données d'entraînement, de validation et de test aux liens suivants:
+ * entraînement: https://challenge.kitware.com/#phase/5841916ccad3a51cc66c8db0
+ * validation: https://challenge.kitware.com/#phase/584b08eecad3a51cc66c8e1f
+ * test: https://challenge.kitware.com/#phase/584b0afacad3a51cc66c8e24
+
+Ensuite, extraire les données et les mettre dans un dossier nommé datasets/data/.
+
+Pour démarrer l'entraînement, allez dans le fichier "INF8225-Project" et ouvrez une console à partir de cette destination. Tapez la commande "python mains\train_segan.py" pour démarrer l'entraînement et effectuer l'évaluation du modèle par la suite. 
+
+
+
