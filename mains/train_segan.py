@@ -2,11 +2,22 @@ from architectures.SegAN.model.Segmentor import *
 from architectures.SegAN.model.Critic import *
 from datasets.MelanomaDataset import *
 import torch
-import torchvision.utils as vutils
+import torchvision.utils as vis
 from torch.optim import Adam
 import matplotlib.pyplot as plt
 
 output_path = "./outputs"
+if not os.path.exists(output_path):
+    os.makedirs(output_path)
+
+plot_path = "./plots/"
+if not os.path.exists(plot_path):
+    os.makedirs(plot_path)
+
+saved_models_path = "./saved_models/"
+if not os.path.exists(saved_models_path):
+    os.makedirs(saved_models_path)
+
 data_path = "./datasets/data"
 num_epoch = 300
 lr = 0.003
@@ -71,13 +82,13 @@ def save_checkpoints(input, label, predictions, output_path, epoch, is_train):
     id = ""
     if not is_train:
         id = "_val"
-    vutils.save_image(input.double(),
+    vis.save_image(input.double(),
                       '%s/input%s_%d.png' % (output_path, id, epoch),
                       normalize=True)
-    vutils.save_image(label.double(),
+    vis.save_image(label.double(),
                       '%s/label%s_%d.png' % (output_path, id, epoch),
                       normalize=True)
-    vutils.save_image(predictions.double(),
+    vis.save_image(predictions.double(),
                       '%s/result%s_%d.png' % (output_path, id, epoch),
                       normalize=True)
 
@@ -212,10 +223,10 @@ if __name__ == "__main__":
         val_loader = loader(Dataset_val_test(data_path, False), batch_size)
         val_accuracy, val_dice, val_jaccard = eval(Segmentor, val_loader, output_path, epoch)
         if max_dice < val_dice:
-            torch.save(Segmentor, './models/Segmentor_max_dice.pt')
+            torch.save(Segmentor, saved_models_path + 'Segmentor_max_dice.pt')
             max_dice = val_dice
         if max_jaccard < val_jaccard:
-            torch.save(Segmentor, './models/Segmentor_max_jaccard.pt')
+            torch.save(Segmentor, saved_models_path + 'Segmentor_max_jaccard.pt')
             max_jaccard = val_jaccard
         print("Val_accuracy : {}".format(val_accuracy))
         val_accuracies.append(val_accuracy)
@@ -234,7 +245,7 @@ if __name__ == "__main__":
             optimizer_seg, optimizer_crit = update_optimizer(lr, Segmentor.parameters(), Critic.parameters())
 
     ### ------ Test ------ ###
-    torch.save(Segmentor, './models/Segmentor_final.pt')
+    torch.save(Segmentor, saved_models_path + 'Segmentor_final.pt')
     test_loader = loader(Dataset_val_test(data_path, True), batch_size)
 
     test_accuracy, dice, jaccard = eval(Segmentor, test_loader, output_path)
@@ -246,14 +257,14 @@ if __name__ == "__main__":
     plt.xlabel("Epoch")
     plt.ylabel("Dice score")
     plt.plot(val_dices)
-    plt.savefig('./plots/dice.png')
+    plt.savefig(plot_path + 'dice.png')
     plt.show()
 
     plt.title("Validation Jaccard Index")
     plt.xlabel("Epoch")
     plt.ylabel("Jaccard Index")
     plt.plot(val_jaccards)
-    plt.savefig('./plots/jaccard.png')
+    plt.savefig(plot_path + 'jaccard.png')
     plt.show()
 
     plt.title("Training and Validation Losses for Critic and Segmentor")
@@ -262,7 +273,7 @@ if __name__ == "__main__":
     plt.plot(losses_C_train, label="Critic Loss")
     plt.plot(losses_S_train, label="Segmentor Loss")
     plt.legend(loc="lower right")
-    plt.savefig('./plots/losses.png')
+    plt.savefig(plot_path + 'losses.png')
     plt.show()
 
     plt.title("Training and Validation Accuracies for Segmentor")
@@ -271,5 +282,5 @@ if __name__ == "__main__":
     plt.plot(train_accuracies, label="Train")
     plt.plot(val_accuracies, label="Validation")
     plt.legend(loc="lower right")
-    plt.savefig('./plots/accuracy.png')
+    plt.savefig(plot_path + 'accuracy.png')
     plt.show()
