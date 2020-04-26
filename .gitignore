@@ -1,6 +1,7 @@
 # Data Folder
-rawdata/
-!rawdata/README.md
+rawdata/*.zip
+rawdata/*/*
+!rawdata/test.txt
 Results/
 
 # Byte-compiled / optimized / DLL files
