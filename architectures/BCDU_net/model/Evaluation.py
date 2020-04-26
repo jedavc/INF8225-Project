@@ -50,7 +50,6 @@ class Evaluation():
         """
         false_positives, true_positives, thresholds = sklearn.metrics.roc_curve((self.y_true), self.y_pred)
         AUC_ROC = roc_auc_score(self.y_true, self.y_pred)
-        # test_integral = np.trapz(tpr,fpr) #trapz is numpy integration
         print("\nArea under the ROC curve: " + str(AUC_ROC))
         roc_curve = plt.figure()
         plt.plot(false_positives, true_positives, '-', label='Area Under the Curve (AUC = %0.4f)' % AUC_ROC)

@@ -44,9 +44,9 @@ class VisualizePredicitons():
         :param n_patches_in_width: Number of patches in the image's width
         :return: Sum of the probabilities
         """
-        sum_probas = np.zeros((all_images, predictions.shape[1], height, width))  #itialize to zero mega array with sum of Probabilities
+        sum_probas = np.zeros((all_images, predictions.shape[1], height, width))
         sum = np.zeros((all_images, predictions.shape[1], height, width))
-        patches_iter = 0  # iterator over all the patches
+        patches_iter = 0
         for image in range(all_images):
             for i_height in range(n_patches_in_height):
                 for j_width in range(n_patches_in_width):
@@ -65,22 +65,12 @@ class VisualizePredicitons():
         """
         height = predictions.shape[2]
         width = predictions.shape[3]
-        for image in range(predictions.shape[0]):  # loop over the full images
+        for image in range(predictions.shape[0]):
             for pixel_width in range(width):
                 for pixel_height in range(height):
                     if self.in_view(image, pixel_width, pixel_height, border_masks) == False:
                         predictions[image, :, pixel_height, pixel_width] = 0.0
 
-    def kill_border(self, data, original_imgs_border_masks):
-        assert (len(data.shape) == 4)  # 4D arrays
-        assert (data.shape[1] == 1 or data.shape[1] == 3)  # check the channel is 1 or 3
-        height = data.shape[2]
-        width = data.shape[3]
-        for i in range(data.shape[0]):  # loop over the full images
-            for x in range(width):
-                for y in range(height):
-                    if self.in_view(i, x, y, original_imgs_border_masks) == False:
-                        data[i, :, y, x] = 0.0
 
 
     def in_view(self, image, width_pixel, height_pixel, original_bm):
@@ -127,7 +117,7 @@ class VisualizePredicitons():
         width = images.shape[3]
         new_preds = []
         new_masks = []
-        for image in range(images.shape[0]):  # loop over the full images
+        for image in range(images.shape[0]):
             for width_pixel in range(width):
                 for height_pixel in range(height):
                     if self.in_view(image, width_pixel, height_pixel, original_bm):
