@@ -64,7 +64,7 @@ class Preprocessing():
         for i in range(10):
             plt.clf()
             plt.imshow(np.squeeze(data[i]), cmap='gray')
-            plt.savefig('architectures/BCDU_net/Preprocessed_images/Patches/' + type + preprocess_step +str(i) +"_.png")
+            plt.savefig('architectures/BCDU_net/Preprocessed_Images/Patches/' + type + preprocess_step +str(i) +"_.png")
 
     def plot_image(self, data, preprocess_step=""):
         """
@@ -74,10 +74,10 @@ class Preprocessing():
         """
         plt.clf()
         plt.imshow(np.squeeze(data[1]), cmap='gray')
-        plt.savefig('architectures/BCDU_net/Preprocessed_images/' + preprocess_step +"_.png")
+        plt.savefig('architectures/BCDU_net/Preprocessed_Images/' + preprocess_step +"_.png")
         plt.clf()
         plt.imshow(np.squeeze(data[13]), cmap='gray')
-        plt.savefig('architectures/BCDU_net/Preprocessed_images/' + preprocess_step +"_13_.png")
+        plt.savefig('architectures/BCDU_net/Preprocessed_Images/' + preprocess_step +"_13_.png")
 
 
     def new_dimensions(self):

@@ -21,7 +21,7 @@ def run_training(args):
     train_inputs, train_gt, train_bm = retina_blood_vessel_dataset.get_training_data()
 
     train_prepro_inputs, train_prepro_bm = preprocessing.run_preprocess_pipeline(train_inputs, "train", train_gt)
-    # #Using the einstein sum
+    #Using the einstein sum
     train_prepro_inputs = np.einsum('klij->kijl', train_prepro_inputs)
     train_prepro_bm = np.einsum('klij->kijl', train_prepro_bm)
     input_shape = (64,64,1)
@@ -36,12 +36,11 @@ def run_training(args):
     file = args.bcdu_models_dir + "weights_lstm_.hdf5"
     mcp_save = ModelCheckpoint(file, save_best_only=True, monitor='val_loss', mode='min')
     reduce_LR = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=7, verbose=1, epsilon=1e-7, mode='min')
-    # model = load_model("../BCDU_models/new_model.01-0.12--0.95--0.95--0.14.hdf5")
     file = args.bcdu_models_dir + "history_log_.csv"
     csv_logger = CSVLogger(file, append=True)
     history = model.fit(train_prepro_inputs, train_prepro_bm,
               batch_size=8,
-              epochs=1,
+              epochs=50,
               shuffle=True,
               verbose=1,
               validation_split=0.2, callbacks=[csv_logger, mcp_save, reduce_LR])
@@ -87,7 +86,6 @@ def run_eval(args):
     preds = model.predict(test_prepro_inputs, batch_size=16, verbose=1)
     predictions = np.einsum('kijl->klij', preds)
     np.save('50_predictions_', predictions)
-    # predictions = np.load("50_predictions.npy")
     print("predicted images size :")
     print(predictions.shape)
     #Create an instance of the prediction visualizer class
